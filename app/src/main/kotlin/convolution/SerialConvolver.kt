@@ -6,27 +6,24 @@ class SerialConvolver : Convolver {
         val imageWidth = image[0].size
         val kernelHeight = kernel.size
         val kernelWidth = kernel[0].size
+        require(kernelHeight % 2 == 1 && kernelWidth % 2 == 1) { "Kernel dimensions must be odd" }
         val padHeight = kernelHeight / 2
         val padWidth = kernelWidth / 2
 
-        val paddedImage = Array(imageHeight + 2 * padHeight) { DoubleArray(imageWidth + 2 * padWidth) }
-        for (i in image.indices) {
-            for (j in image[i].indices) {
-                paddedImage[i + padHeight][j + padWidth] = image[i][j]
-            }
-        }
-
         val output = Array(imageHeight) { DoubleArray(imageWidth) }
 
-        for (i in 0 until imageHeight) {
-            for (j in 0 until imageWidth) {
+        for (y in 0 until imageHeight) {
+            for (x in 0 until imageWidth) {
                 var sum = 0.0
-                for (ki in 0 until kernelHeight) {
-                    for (kj in 0 until kernelWidth) {
-                        sum += kernel[ki][kj] * paddedImage[i + ki][j + kj]
+                for (ky in 0 until kernelHeight) {
+                    for (kx in 0 until kernelWidth) {
+                        val imageY = (y - padHeight + ky + imageHeight) % imageHeight
+                        val imageX = (x - padWidth + kx + imageWidth) % imageWidth
+
+                        sum += kernel[ky][kx] * image[imageY][imageX]
                     }
                 }
-                output[i][j] = sum
+                output[y][x] = sum.coerceIn(0.0, 255.0)
             }
         }
 
