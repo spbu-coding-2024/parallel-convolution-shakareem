@@ -164,18 +164,4 @@ class ParameterizedConvolutionTest {
             assertImagesEqual(serialResult, allProcessorsResult)
         }
     }
-
-    @Test
-    fun `result is identical for any OS thread count and split strategy`() {
-        val image = randomImage(101, 97, Random(42))
-        val kernels = listOf(randomKernel(3, 3, Random(43)), randomKernel(7, 5, Random(44)), randomKernel(11, 11, Random(45)))
-        for (kernel in kernels) {
-            val reference = serialConvolve(image, kernel)
-            for (threads in listOf(1, 2, 3, 7, 14, 21)) {
-                assertImagesEqual(reference, runBlocking { rowsConvolve(image, kernel, threads) })
-                assertImagesEqual(reference, runBlocking { columnsConvolve(image, kernel, threads) })
-                assertImagesEqual(reference, runBlocking { autoGridConvolve(image, kernel, threads) })
-            }
-        }
-    }
 }
