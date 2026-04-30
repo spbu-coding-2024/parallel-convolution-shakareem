@@ -1,0 +1,17 @@
+strategy,image,kernel,avg_ms,min_ms,max_ms,run1_ms,run2_ms,run3_ms,run4_ms,run5_ms
+serial,cameraman.bmp,blur_3x3,3,1,9,9,2,2,1,2
+serial,cameraman.bmp,sharpen_3x3,1,1,1,1,1,1,1,1
+serial,cameraman.bmp,edge_3x3,1,1,2,1,2,1,1,1
+serial,cameraman.bmp,blur_11x11,11,11,12,11,12,12,12,12
+serial,lenna.bmp,blur_3x3,4,4,5,4,4,5,4,5
+serial,lenna.bmp,sharpen_3x3,4,4,4,4,4,4,4,4
+serial,lenna.bmp,edge_3x3,4,4,4,4,4,4,4,4
+serial,lenna.bmp,blur_11x11,47,46,48,48,46,47,48,47
+serial,man.bmp,blur_3x3,17,17,17,17,17,17,17,17
+serial,man.bmp,sharpen_3x3,17,16,20,20,16,16,17,16
+serial,man.bmp,edge_3x3,16,16,17,16,17,16,16,17
+serial,man.bmp,blur_11x11,191,188,194,193,189,194,192,188
+serial,girl.bmp,blur_3x3,6,6,8,7,6,8,6,7
+serial,girl.bmp,sharpen_3x3,6,6,7,6,6,7,6,6
+serial,girl.bmp,edge_3x3,6,6,7,6,7,6,7,6
+serial,girl.bmp,blur_11x11,74,74,76,75,76,74,74,74
