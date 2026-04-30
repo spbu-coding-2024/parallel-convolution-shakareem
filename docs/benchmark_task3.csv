@@ -1,0 +1,22 @@
+kernel,label,readers,workers,writers,buffer,avg_ms
+light_3x3,serial 1r/1w/1worker buf=8,1,1,1,8,1602
+light_3x3,parallel 1r/1w/4workers buf=8,1,4,1,8,1506
+light_3x3,parallel 2r/2w/4workers buf=8,2,4,2,8,1201
+light_3x3,parallel 2r/2w/8workers buf=8,2,8,2,8,1116
+light_3x3,parallel 1r/1w/1worker buf=1 (tight),1,1,1,1,2093
+light_3x3,parallel 1r/1w/1worker buf=32 (loose),1,1,1,32,1417
+heavy_11x11,serial 1r/1w/1worker buf=8,1,1,1,8,8093
+heavy_11x11,parallel 1r/1w/4workers buf=8,1,4,1,8,4661
+heavy_11x11,parallel 1r/1w/8workers buf=8,1,8,1,8,4364
+heavy_11x11,parallel 1r/1w/12workers buf=8,1,12,1,8,4348
+heavy_11x11,parallel 2r/2w/8workers buf=8,2,8,2,8,4332
+heavy_11x11,parallel 2r/2w/12workers buf=16,2,12,2,16,4157
+heavy_11x11,serial 1r/1w/1worker ALLPROCESSORS buf=8,1,1,1,8,1934
+heavy_11x11,parallel 1r/1w/4workers ALLPROCESSORS buf=8,1,4,1,8,1994
+heavy_11x11,parallel 1r/1w/8workers ALLPROCESSORS buf=8,1,8,1,8,1937
+heavy_11x11,4workers buf=1,1,4,1,1,6472
+heavy_11x11,4workers buf=2,1,4,1,2,5111
+heavy_11x11,4workers buf=4,1,4,1,4,4742
+heavy_11x11,4workers buf=8,1,4,1,8,4715
+heavy_11x11,4workers buf=16,1,4,1,16,4615
+heavy_11x11,4workers buf=32,1,4,1,32,4569
