@@ -2,13 +2,6 @@
 
 A command-line tool for applying 2D convolution filters to grayscale images.
 
-## Implementation Details
-
-- **Boundary conditions**: wrap-around (cyclic padding) — pixels outside the image are taken from the opposite edge
-- **Kernel convention**: classical discrete convolution (kernel is reflected), not correlation
-- **Pixel values**: not clamped during computation — only clamped to `[0, 255]` on write, preserving mathematical correctness for filter composition
-- **Image I/O**: `javax.imageio` (standard JDK), grayscale via luminance formula `0.299·R + 0.587·G + 0.114·B`
-
 ## Available Filters
 
 | Name | Description |
@@ -20,10 +13,21 @@ A command-line tool for applying 2D convolution filters to grayscale images.
 | `edge` | 3×3 edge detection |
 | `left` / `right` | Shift filters |
 
+## Parallelization Strategies
+
+| Mode | Description |
+|------|-------------|
+| `SERIAL` | Single-threaded (Task 1 baseline) |
+| `ROWS` | One coroutine per row — cache-friendly (row-major access) |
+| `COLUMNS` | One coroutine per column — cache-unfriendly (column-major access on row-major data) |
+| `GRID` | 2D rectangular grid of blocks — configurable `numBlocksY × numBlocksX` |
+| `ALLPROCESSORS` | Rows divided evenly across all CPU cores — minimal overhead |
+| `PIXELWISE` | One coroutine per pixel — extreme overhead, for observation only |
+
 ## Usage
 
 ```bash
-./gradlew run --args="-i input.bmp -o output.bmp -f blur"
+./gradlew run --args="-i input.bmp -o output.bmp -f blur -m ROWS"
 ```
 
 ### CLI Arguments
@@ -32,6 +36,7 @@ A command-line tool for applying 2D convolution filters to grayscale images.
 -i  Input image file (required)
 -o  Output image file (default: output.bmp)
 -f  Filter name: id, black, blur, sharpen, edge, left, right (required)
+-m  Mode: SERIAL, ROWS, COLUMNS, ALLPROCESSORS (default: ALLPROCESSORS)
 ```
 
 ## Running Tests
@@ -40,14 +45,25 @@ A command-line tool for applying 2D convolution filters to grayscale images.
 ./gradlew test
 ```
 
+All parallel strategies are verified to produce identical results to the serial implementation.
+
 ## Benchmarking
 
-```bash
-./gradlew benchmark
-```
+### Serial
 
+```bash
+./gradlew benchmark -Ptask=serial
+```
 Results are saved to `docs/benchmark_task1.csv`.
 
-## Performance Analysis
+### Parallel
 
-See [analysis/task1.md](analysis/task1.md) for full benchmark results and analysis.
+```bash
+./gradlew benchmark -Ptask=parallel
+```
+Results are saved to `docs/benchmark_task2.csv`.
+
+## Performance Analysis
+- [analysis/task1.md](analysis/task1.md) - serial benchmark results and analysis.
+- [analysis/task2.md](analysis/task2.md) - parallel benchmark results, cache locality analysis,
+and comparison with Task 1 serial baseline.
