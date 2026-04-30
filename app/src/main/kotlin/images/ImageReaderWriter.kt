@@ -1,38 +1,40 @@
 package images
 
-import org.opencv.core.CvType
-import org.opencv.core.Mat
-import org.opencv.imgcodecs.Imgcodecs
-import org.opencv.imgproc.Imgproc
+import java.awt.Color
+import java.awt.image.BufferedImage
+import java.io.File
+import javax.imageio.ImageIO
 
-class ImageReaderWriter {
-    fun readImage(filePath: String): Array<DoubleArray> {
-        val img: Mat = Imgcodecs.imread(filePath)
-        val gray = Mat()
-        Imgproc.cvtColor(img, gray, Imgproc.COLOR_BGR2GRAY)
+typealias Bitmap = Array<DoubleArray>
 
-        val height = gray.rows()
-        val width = gray.cols()
-        val array = Array(height) { DoubleArray(width) }
+fun readImage(filePath: String): Bitmap {
+    val img = ImageIO.read(File(filePath)) ?: error("Cannot read image $filePath")
+    val height = img.height
+    val width = img.width
+    val bitmap = Array(height) { DoubleArray(width) }
 
-        for (y in 0 until height) {
-            for (x in 0 until width) {
-                array[y][x] = gray.get(y, x)[0]
-            }
+    for (y in 0 until height) {
+        for (x in 0 until width) {
+            val c = Color(img.getRGB(x, y))
+            val gray = 0.299 * c.red + 0.587 * c.green + 0.114 * c.blue
+            bitmap[y][x] = gray
         }
-        return array
+    }
+    return bitmap
+}
+
+fun writeImage(image: Bitmap, filePath: String) {
+    val height = image.size
+    val width = image[0].size
+    val out = BufferedImage(width, height, BufferedImage.TYPE_BYTE_GRAY)
+
+    for (y in 0 until height) {
+        for (x in 0 until width) {
+            val gray = image[y][x].coerceIn(0.0, 255.0).toInt()
+            val rgb = Color(gray, gray, gray).rgb
+            out.setRGB(x, y, rgb)
+        }
     }
 
-    fun writeImage(image: Array<DoubleArray>, filePath: String) {
-        val height = image.size
-        val width = image[0].size
-        val mat = Mat(height, width, CvType.CV_8U)
-
-        for (y in 0 until height) {
-            for (x in 0 until width) {
-                mat.put(y, x, image[y][x].coerceIn(0.0, 255.0))
-            }
-        }
-        Imgcodecs.imwrite(filePath, mat)
-    }
+    ImageIO.write(out, "bmp", File(filePath))
 }
