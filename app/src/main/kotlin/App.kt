@@ -14,19 +14,19 @@ fun main(args: Array<String>) {
     val input by parser.option(
         ArgType.String,
         shortName = "i",
-        description = "Input image file"
+        description = "Input image file",
     ).required()
 
     val output by parser.option(
         ArgType.String,
         shortName = "o",
-        description = "Output image file"
+        description = "Output image file",
     ).default("output.bmp")
 
     val filterName by parser.option(
         ArgType.String,
         shortName = "f",
-        description = "Filter name: ${FILTERS.keys.joinToString()}"
+        description = "Filter name: ${FILTERS.keys.joinToString()}",
     ).required()
 
     parser.parse(args)

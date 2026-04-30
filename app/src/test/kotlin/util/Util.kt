@@ -7,7 +7,7 @@ import kotlin.random.Random
 fun assertImagesEqual(
     img1: Bitmap,
     img2: Bitmap,
-    eps: Double = 1e-9
+    eps: Double = 1e-9,
 ) {
     assertEquals(img1.size, img2.size, "Different image heights")
 
@@ -19,22 +19,33 @@ fun assertImagesEqual(
                 img1[y][x],
                 img2[y][x],
                 eps,
-                "Pixels differ at ($y,$x)"
+                "Pixels differ at ($y,$x)",
             )
         }
     }
 }
 
-fun randomImage(height: Int, width: Int, rnd: Random): Bitmap {
+fun randomImage(
+    height: Int,
+    width: Int,
+    rnd: Random,
+): Bitmap {
     return Array(height) { DoubleArray(width) { rnd.nextDouble(0.0, 255.0) } }
 }
 
-fun randomOddSize(max: Int, rnd: Random): Int {
+fun randomOddSize(
+    max: Int,
+    rnd: Random,
+): Int {
     val choices = (1..max step 2).toList()
     return choices[rnd.nextInt(choices.size)]
 }
 
-fun randomKernel(height: Int, width: Int, rnd: Random): Bitmap {
+fun randomKernel(
+    height: Int,
+    width: Int,
+    rnd: Random,
+): Bitmap {
     val k = Array(height) { DoubleArray(width) { rnd.nextDouble() } }
     var sum = 0.0
     for (row in k) for (v in row) sum += v

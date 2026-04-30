@@ -4,7 +4,6 @@ import filters.BLACK
 import filters.ID
 import filters.SHIFTLEFT
 import filters.SHIFTRIGHT
-import images.Bitmap
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
 import org.junit.jupiter.params.ParameterizedTest

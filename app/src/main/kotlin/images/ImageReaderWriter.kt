@@ -23,7 +23,10 @@ fun readImage(filePath: String): Bitmap {
     return bitmap
 }
 
-fun writeImage(image: Bitmap, filePath: String) {
+fun writeImage(
+    image: Bitmap,
+    filePath: String,
+) {
     val height = image.size
     val width = image[0].size
     val out = BufferedImage(width, height, BufferedImage.TYPE_BYTE_GRAY)
