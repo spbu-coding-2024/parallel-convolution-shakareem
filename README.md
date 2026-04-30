@@ -13,30 +13,40 @@ A command-line tool for applying 2D convolution filters to grayscale images.
 | `edge` | 3×3 edge detection |
 | `left` / `right` | Shift filters |
 
-## Parallelization Strategies
+## Pipeline Architecture
 
-| Mode | Description |
-|------|-------------|
-| `SERIAL` | Single-threaded (Task 1 baseline) |
-| `ROWS` | One coroutine per row — cache-friendly (row-major access) |
-| `COLUMNS` | One coroutine per column — cache-unfriendly (column-major access on row-major data) |
-| `GRID` | 2D rectangular grid of blocks — configurable `numBlocksY × numBlocksX` |
-| `ALLPROCESSORS` | Rows divided evenly across all CPU cores — minimal overhead |
-| `PIXELWISE` | One coroutine per pixel — extreme overhead, for observation only |
+```
+readDataset ──[buffer]──► processImages ──[buffer]──► writeDataset
+ (producer)                (processor)                (consumer)
+```
+
+- **readDataset**: reads files sequentially, sends to buffered channel
+- **processImages**: processes each image in a separate coroutine on `Dispatchers.Default`
+- **writeDataset**: writes results sequentially
+- **Backpressure**: buffered channels prevent unbounded memory growth
 
 ## Usage
 
+### Single image
+
 ```bash
-./gradlew run --args="-i input.bmp -o output.bmp -f blur -m ROWS"
+./gradlew run --args="-i input.bmp -o output/ -f blur -m ALLPROCESSORS"
+```
+
+### Dataset (directory)
+
+```bash
+./gradlew run --args="-i images/ -o processed/ -f sharpen -m ROWS -b 8"
 ```
 
 ### CLI Arguments
 
 ```
--i  Input image file (required)
--o  Output image file (default: output.bmp)
+-i  Input file or directory (required)
+-o  Output directory (default: .)
 -f  Filter name: id, black, blur, sharpen, edge, left, right (required)
--m  Mode: SERIAL, ROWS, COLUMNS, ALLPROCESSORS (default: ALLPROCESSORS)
+-m  Mode: SERIAL, ROWS, COLUMNS, ALLPROCESSORS, GRID (default: ALLPROCESSORS)
+-b  Buffer size for pipeline channels (default: 8)
 ```
 
 ## Running Tests
@@ -44,8 +54,6 @@ A command-line tool for applying 2D convolution filters to grayscale images.
 ```bash
 ./gradlew test
 ```
-
-All parallel strategies are verified to produce identical results to the serial implementation.
 
 ## Benchmarking
 
@@ -63,7 +71,16 @@ Results are saved to `docs/benchmark_task1.csv`.
 ```
 Results are saved to `docs/benchmark_task2.csv`.
 
+### Pipeline
+
+```bash
+./gradlew benchmark -Ptask=pipeline
+```
+Results are saved to `docs/benchmark_task3.csv`.
+
 ## Performance Analysis
 - [analysis/task1.md](analysis/task1.md) - serial benchmark results and analysis.
 - [analysis/task2.md](analysis/task2.md) - parallel benchmark results, cache locality analysis,
 and comparison with Task 1 serial baseline.
+- [analysis/task3.md](analysis/task3.md) async pipeline benchmark results, backpressure analysis,
+memory pressure estimates, and comparison with Task 1 and Task 2.

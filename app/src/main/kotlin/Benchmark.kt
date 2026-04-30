@@ -10,12 +10,18 @@ import filters.SHARPEN
 import images.Bitmap
 import images.readImage
 import kotlinx.coroutines.runBlocking
+import pipeline.Mode
+import pipeline.PipelineConfig
+import pipeline.processDataset
 import java.io.File
 import java.nio.file.Paths
 import kotlin.system.measureTimeMillis
 
 // 11x11 box blur — compute-heavy
 val HEAVY_KERNEL = Array(11) { DoubleArray(11) { 1.0 / 121 } }
+
+// 3x3 blur — I/O-bound scenario
+val LIGHT_KERNEL = Array(3) { DoubleArray(3) { 1.0 / 9 } }
 
 fun benchSerial(
     image: Bitmap,
@@ -187,6 +193,130 @@ fun runParallelBenchmark(
     println("CSV saved to ${csvFile.absolutePath}")
 }
 
+fun bench(
+    label: String,
+    repeats: Int,
+    block: () -> Unit,
+): Long {
+    block() // warmup
+    val times = mutableListOf<Long>()
+    repeat(repeats) { times.add(measureTimeMillis { block() }) }
+    val avg = times.average().toLong()
+    val min = times.min()
+    val max = times.max()
+    println("  %-45s avg=%4dms  min=%4dms  max=%4dms".format(label, avg, min, max))
+    return avg
+}
+
+fun runPipelineBenchmark(
+    resourcesDir: File,
+    docsDir: File,
+) {
+    val cores = Runtime.getRuntime().availableProcessors()
+    val repeats = 3
+    val outputDir = File("build/benchmark_output").also { it.mkdirs() }
+
+    val files = resourcesDir.listFiles { f -> f.isFile }?.toList() ?: emptyList()
+    val sampleImg = readImage(files.first().absolutePath)
+    val imgKB = sampleImg.size * sampleImg[0].size * 8L / 1024
+
+    println("=== Task 3: Pipeline Benchmark ===")
+    println("Dataset  : ${files.size} images")
+    println("Sample   : ${sampleImg.size}x${sampleImg[0].size} = $imgKB KB per image")
+    println("CPU cores: $cores\n")
+
+    data class Row(
+        val kernel: String,
+        val label: String,
+        val readers: Int,
+        val workers: Int,
+        val writers: Int,
+        val buffer: Int,
+        val avgMs: Long,
+    )
+
+    val rows = mutableListOf<Row>()
+
+    fun runLight(
+        label: String,
+        cfg: PipelineConfig,
+    ): Long {
+        val avg = bench(label, repeats) { processDataset(resourcesDir, outputDir, LIGHT_KERNEL, Mode.SERIAL, cfg) }
+        rows.add(Row("light_3x3", label, cfg.numReaders, cfg.numWorkers, cfg.numWriters, cfg.bufferSize, avg))
+        return avg
+    }
+
+    fun runHeavy(
+        label: String,
+        cfg: PipelineConfig,
+        mode: Mode = Mode.SERIAL,
+    ): Long {
+        val avg = bench(label, repeats) { processDataset(resourcesDir, outputDir, HEAVY_KERNEL, mode, cfg) }
+        rows.add(Row("heavy_11x11", label, cfg.numReaders, cfg.numWorkers, cfg.numWriters, cfg.bufferSize, avg))
+        return avg
+    }
+
+    println("── Scenario 1: Light kernel (3×3 blur) — I/O bound ──")
+    val baseLight = runLight("serial 1r/1w/1worker buf=8", PipelineConfig(1, 1, 1, 8))
+    runLight("parallel 1r/1w/4workers buf=8", PipelineConfig(1, 4, 1, 8))
+    runLight("parallel 2r/2w/4workers buf=8", PipelineConfig(2, 4, 2, 8))
+    runLight("parallel 2r/2w/8workers buf=8", PipelineConfig(2, 8, 2, 8))
+    runLight("parallel 1r/1w/1worker buf=1 (tight)", PipelineConfig(1, 1, 1, 1))
+    runLight("parallel 1r/1w/1worker buf=32 (loose)", PipelineConfig(1, 1, 1, 32))
+    println()
+
+    println("── Scenario 2: Heavy kernel (11×11 blur) — compute bound ──")
+    val baseHeavy = runHeavy("serial 1r/1w/1worker buf=8", PipelineConfig(1, 1, 1, 8))
+    runHeavy("parallel 1r/1w/4workers buf=8", PipelineConfig(1, 4, 1, 8))
+    runHeavy("parallel 1r/1w/8workers buf=8", PipelineConfig(1, 8, 1, 8))
+    runHeavy("parallel 1r/1w/12workers buf=8", PipelineConfig(1, cores, 1, 8))
+    runHeavy("parallel 2r/2w/8workers buf=8", PipelineConfig(2, 8, 2, 8))
+    runHeavy("parallel 2r/2w/12workers buf=16", PipelineConfig(2, cores, 2, 16))
+    println()
+
+    println("── Scenario 3: Heavy kernel + parallel convolution per image ──")
+    runHeavy("1r/1w/1worker ALLPROCESSORS buf=8", PipelineConfig(1, 1, 1, 8), Mode.ALLPROCESSORS)
+    runHeavy("1r/1w/4workers ALLPROCESSORS buf=8", PipelineConfig(1, 4, 1, 8), Mode.ALLPROCESSORS)
+    runHeavy("1r/1w/8workers ALLPROCESSORS buf=8", PipelineConfig(1, 8, 1, 8), Mode.ALLPROCESSORS)
+    println()
+
+    println("── Scenario 4: Buffer size effect (heavy kernel, 4 workers) ──")
+    for (buf in listOf(1, 2, 4, 8, 16, 32)) {
+        runHeavy("4workers buf=$buf", PipelineConfig(1, 4, 1, buf))
+    }
+    println()
+
+    val bestLight = rows.filter { it.kernel == "light_3x3" }.minByOrNull { it.avgMs }
+    val bestHeavy = rows.filter { it.kernel == "heavy_11x11" }.minByOrNull { it.avgMs }
+    println("── Summary ──")
+    println(
+        "  Light baseline: ${baseLight}ms  best: ${bestLight?.avgMs}ms  speedup: ${"%.2f".format(
+            baseLight.toDouble() / (bestLight?.avgMs ?: 1),
+        )}x",
+    )
+    println(
+        "  Heavy baseline: ${baseHeavy}ms  best: ${bestHeavy?.avgMs}ms  speedup: ${"%.2f".format(
+            baseHeavy.toDouble() / (bestHeavy?.avgMs ?: 1),
+        )}x",
+    )
+    println()
+
+    println("── Memory pressure (per channel, heavy kernel) ──")
+    for (buf in listOf(1, 4, 8, 16, 32)) {
+        val mb = imgKB * buf * 2 / 1024
+        println("  buffer=$buf: ~$mb MB (2 channels × $buf × ${imgKB}KB)")
+    }
+
+    val csvFile = File(docsDir, "benchmark_task3.csv")
+    csvFile.printWriter().use { out ->
+        out.println("kernel,label,readers,workers,writers,buffer,avg_ms")
+        for (r in rows) {
+            out.println("${r.kernel},${r.label},${r.readers},${r.workers},${r.writers},${r.buffer},${r.avgMs}")
+        }
+    }
+    println("\nCSV saved to ${csvFile.absolutePath}")
+}
+
 fun main(args: Array<String>) {
     val task = args.firstOrNull() ?: "serial"
 
@@ -208,6 +338,7 @@ fun main(args: Array<String>) {
     when (task) {
         "serial" -> runSerialBenchmark(resourcesDir, docsDir)
         "parallel" -> runParallelBenchmark(resourcesDir, docsDir)
-        else -> error("Unknown benchmark task: '$task'. Available: serial, parallel")
+        "pipeline" -> runPipelineBenchmark(resourcesDir, docsDir)
+        else -> error("Unknown benchmark task: '$task'. Available: serial, parallel, pipeline")
     }
 }
