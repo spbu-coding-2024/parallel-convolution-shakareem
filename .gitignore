@@ -215,3 +215,10 @@ gradle-app.setting
 *.hprof
 
 # End of https://www.toptal.com/developers/gitignore/api/linux,visualstudiocode,intellij,kotlin,java,gradle
+
+task.md
+# Kotlin compiler daemon session state
+.kotlin/
+
+# Raw benchmark run data (regenerated per run; committed selectively)
+docs/bench/

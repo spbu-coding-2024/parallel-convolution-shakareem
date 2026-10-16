@@ -1,0 +1,451 @@
+round,scenario,label,kernel,mode,readers,workers,writers,buffer,conv_threads,dataset_mp,rep,ns
+1,io_scaling,light 12w 3r/3w,light_3x3,SERIAL,3,12,3,8,12,13.839204,1,224964784
+1,nested,12w ROWS t=12 (shared pool),heavy_15x15,ROWS,1,12,1,8,12,13.839204,1,343091023
+1,workers_heavy,workers=12,heavy_15x15,SERIAL,1,12,1,8,12,13.839204,1,1101098692
+1,nested,1w ROWS t=12 (nested),heavy_15x15,ROWS,1,1,1,8,12,13.839204,1,420455873
+1,buffer,heavy 12w buf=32,heavy_15x15,SERIAL,1,12,1,32,12,13.839204,1,1106702905
+1,buffer,heavy 12w buf=1,heavy_15x15,SERIAL,1,12,1,1,12,13.839204,1,1501952915
+1,buffer,light 12w buf=16,light_3x3,SERIAL,1,12,1,16,12,13.839204,1,251945285
+1,buffer,heavy 12w buf=16,heavy_15x15,SERIAL,1,12,1,16,12,13.839204,1,1098470056
+1,workers_heavy,workers=1,heavy_15x15,SERIAL,1,1,1,8,12,13.839204,1,2556934122
+1,stages,encode+write dataset,io,n/a,0,1,1,1,1,13.839204,1,66185698
+1,buffer,heavy 12w buf=8,heavy_15x15,SERIAL,1,12,1,8,12,13.839204,1,1095468253
+1,nested,4w ROWS t=4 (private pools),heavy_15x15,ROWS,1,4,1,8,4,13.839204,1,743382589
+1,buffer,heavy 12w buf=4,heavy_15x15,SERIAL,1,12,1,4,12,13.839204,1,1112522969
+1,workers_light,workers=1,light_3x3,SERIAL,1,1,1,8,12,13.839204,1,330167038
+1,workers_light,workers=8,light_3x3,SERIAL,1,8,1,8,12,13.839204,1,239829020
+1,buffer,light 12w buf=8,light_3x3,SERIAL,1,12,1,8,12,13.839204,1,240454783
+1,buffer,light 12w buf=32,light_3x3,SERIAL,1,12,1,32,12,13.839204,1,240611444
+1,workers_heavy,workers=4,heavy_15x15,SERIAL,1,4,1,8,12,13.839204,1,1096617365
+1,workers_heavy,workers=8,heavy_15x15,SERIAL,1,8,1,8,12,13.839204,1,1106133198
+1,stages,read+decode dataset,io,n/a,1,1,0,1,1,13.839204,1,210084840
+1,io_scaling,heavy 12w 2r/2w,heavy_15x15,SERIAL,2,12,2,8,12,13.839204,1,1094967372
+1,io_scaling,light 12w 2r/2w,light_3x3,SERIAL,2,12,2,8,12,13.839204,1,246192817
+1,buffer,light 12w buf=4,light_3x3,SERIAL,1,12,1,4,12,13.839204,1,248336310
+1,workers_light,workers=12,light_3x3,SERIAL,1,12,1,8,12,13.839204,1,239037304
+1,workers_light,workers=2,light_3x3,SERIAL,1,2,1,8,12,13.839204,1,259789758
+1,workers_light,workers=4,light_3x3,SERIAL,1,4,1,8,12,13.839204,1,237943288
+1,buffer,heavy 12w buf=2,heavy_15x15,SERIAL,1,12,1,2,12,13.839204,1,1101015051
+1,buffer,light 12w buf=1,light_3x3,SERIAL,1,12,1,1,12,13.839204,1,342201232
+1,workers_heavy,workers=2,heavy_15x15,SERIAL,1,2,1,8,12,13.839204,1,1445794569
+1,buffer,light 12w buf=2,light_3x3,SERIAL,1,12,1,2,12,13.839204,1,256997364
+1,io_scaling,light 12w 3r/3w,light_3x3,SERIAL,3,12,3,8,12,13.839204,2,213773272
+1,nested,12w ROWS t=12 (shared pool),heavy_15x15,ROWS,1,12,1,8,12,13.839204,2,345926032
+1,workers_heavy,workers=12,heavy_15x15,SERIAL,1,12,1,8,12,13.839204,2,1099264202
+1,nested,1w ROWS t=12 (nested),heavy_15x15,ROWS,1,1,1,8,12,13.839204,2,413764760
+1,buffer,heavy 12w buf=32,heavy_15x15,SERIAL,1,12,1,32,12,13.839204,2,1107198921
+1,buffer,heavy 12w buf=1,heavy_15x15,SERIAL,1,12,1,1,12,13.839204,2,1516023319
+1,buffer,light 12w buf=16,light_3x3,SERIAL,1,12,1,16,12,13.839204,2,252300531
+1,buffer,heavy 12w buf=16,heavy_15x15,SERIAL,1,12,1,16,12,13.839204,2,1097474747
+1,workers_heavy,workers=1,heavy_15x15,SERIAL,1,1,1,8,12,13.839204,2,2574127812
+1,stages,encode+write dataset,io,n/a,0,1,1,1,1,13.839204,2,58821919
+1,buffer,heavy 12w buf=8,heavy_15x15,SERIAL,1,12,1,8,12,13.839204,2,1104069263
+1,nested,4w ROWS t=4 (private pools),heavy_15x15,ROWS,1,4,1,8,4,13.839204,2,750295605
+1,buffer,heavy 12w buf=4,heavy_15x15,SERIAL,1,12,1,4,12,13.839204,2,1107110781
+1,workers_light,workers=1,light_3x3,SERIAL,1,1,1,8,12,13.839204,2,345450681
+1,workers_light,workers=8,light_3x3,SERIAL,1,8,1,8,12,13.839204,2,246181308
+1,buffer,light 12w buf=8,light_3x3,SERIAL,1,12,1,8,12,13.839204,2,265674347
+1,buffer,light 12w buf=32,light_3x3,SERIAL,1,12,1,32,12,13.839204,2,241112710
+1,workers_heavy,workers=4,heavy_15x15,SERIAL,1,4,1,8,12,13.839204,2,1099816449
+1,workers_heavy,workers=8,heavy_15x15,SERIAL,1,8,1,8,12,13.839204,2,1117790374
+1,stages,read+decode dataset,io,n/a,1,1,0,1,1,13.839204,2,211137117
+1,io_scaling,heavy 12w 2r/2w,heavy_15x15,SERIAL,2,12,2,8,12,13.839204,2,1082544634
+1,io_scaling,light 12w 2r/2w,light_3x3,SERIAL,2,12,2,8,12,13.839204,2,219962670
+1,buffer,light 12w buf=4,light_3x3,SERIAL,1,12,1,4,12,13.839204,2,241932988
+1,workers_light,workers=12,light_3x3,SERIAL,1,12,1,8,12,13.839204,2,257644857
+1,workers_light,workers=2,light_3x3,SERIAL,1,2,1,8,12,13.839204,2,250375002
+1,workers_light,workers=4,light_3x3,SERIAL,1,4,1,8,12,13.839204,2,247629700
+1,buffer,heavy 12w buf=2,heavy_15x15,SERIAL,1,12,1,2,12,13.839204,2,1103899475
+1,buffer,light 12w buf=1,light_3x3,SERIAL,1,12,1,1,12,13.839204,2,318306366
+1,workers_heavy,workers=2,heavy_15x15,SERIAL,1,2,1,8,12,13.839204,2,1452393202
+1,buffer,light 12w buf=2,light_3x3,SERIAL,1,12,1,2,12,13.839204,2,249661228
+1,io_scaling,light 12w 3r/3w,light_3x3,SERIAL,3,12,3,8,12,13.839204,3,228456178
+1,nested,12w ROWS t=12 (shared pool),heavy_15x15,ROWS,1,12,1,8,12,13.839204,3,343054202
+1,workers_heavy,workers=12,heavy_15x15,SERIAL,1,12,1,8,12,13.839204,3,1100971012
+1,nested,1w ROWS t=12 (nested),heavy_15x15,ROWS,1,1,1,8,12,13.839204,3,406473404
+1,buffer,heavy 12w buf=32,heavy_15x15,SERIAL,1,12,1,32,12,13.839204,3,1106925355
+1,buffer,heavy 12w buf=1,heavy_15x15,SERIAL,1,12,1,1,12,13.839204,3,1505982080
+1,buffer,light 12w buf=16,light_3x3,SERIAL,1,12,1,16,12,13.839204,3,248737684
+1,buffer,heavy 12w buf=16,heavy_15x15,SERIAL,1,12,1,16,12,13.839204,3,1101166467
+1,workers_heavy,workers=1,heavy_15x15,SERIAL,1,1,1,8,12,13.839204,3,2555072130
+1,stages,encode+write dataset,io,n/a,0,1,1,1,1,13.839204,3,66808170
+1,buffer,heavy 12w buf=8,heavy_15x15,SERIAL,1,12,1,8,12,13.839204,3,1105697447
+1,nested,4w ROWS t=4 (private pools),heavy_15x15,ROWS,1,4,1,8,4,13.839204,3,742987738
+1,buffer,heavy 12w buf=4,heavy_15x15,SERIAL,1,12,1,4,12,13.839204,3,1110921687
+1,workers_light,workers=1,light_3x3,SERIAL,1,1,1,8,12,13.839204,3,322702160
+1,workers_light,workers=8,light_3x3,SERIAL,1,8,1,8,12,13.839204,3,248936814
+1,buffer,light 12w buf=8,light_3x3,SERIAL,1,12,1,8,12,13.839204,3,244466888
+1,buffer,light 12w buf=32,light_3x3,SERIAL,1,12,1,32,12,13.839204,3,238747947
+1,workers_heavy,workers=4,heavy_15x15,SERIAL,1,4,1,8,12,13.839204,3,1104102528
+1,workers_heavy,workers=8,heavy_15x15,SERIAL,1,8,1,8,12,13.839204,3,1111493138
+1,stages,read+decode dataset,io,n/a,1,1,0,1,1,13.839204,3,205640117
+1,io_scaling,heavy 12w 2r/2w,heavy_15x15,SERIAL,2,12,2,8,12,13.839204,3,1138647088
+1,io_scaling,light 12w 2r/2w,light_3x3,SERIAL,2,12,2,8,12,13.839204,3,213064066
+1,buffer,light 12w buf=4,light_3x3,SERIAL,1,12,1,4,12,13.839204,3,242747784
+1,workers_light,workers=12,light_3x3,SERIAL,1,12,1,8,12,13.839204,3,238407144
+1,workers_light,workers=2,light_3x3,SERIAL,1,2,1,8,12,13.839204,3,245733363
+1,workers_light,workers=4,light_3x3,SERIAL,1,4,1,8,12,13.839204,3,239206072
+1,buffer,heavy 12w buf=2,heavy_15x15,SERIAL,1,12,1,2,12,13.839204,3,1103146440
+1,buffer,light 12w buf=1,light_3x3,SERIAL,1,12,1,1,12,13.839204,3,311381842
+1,workers_heavy,workers=2,heavy_15x15,SERIAL,1,2,1,8,12,13.839204,3,1456643266
+1,buffer,light 12w buf=2,light_3x3,SERIAL,1,12,1,2,12,13.839204,3,258027173
+1,io_scaling,light 12w 3r/3w,light_3x3,SERIAL,3,12,3,8,12,13.839204,4,223086769
+1,nested,12w ROWS t=12 (shared pool),heavy_15x15,ROWS,1,12,1,8,12,13.839204,4,349460772
+1,workers_heavy,workers=12,heavy_15x15,SERIAL,1,12,1,8,12,13.839204,4,1118668846
+1,nested,1w ROWS t=12 (nested),heavy_15x15,ROWS,1,1,1,8,12,13.839204,4,419741480
+1,buffer,heavy 12w buf=32,heavy_15x15,SERIAL,1,12,1,32,12,13.839204,4,1101644246
+1,buffer,heavy 12w buf=1,heavy_15x15,SERIAL,1,12,1,1,12,13.839204,4,1503012885
+1,buffer,light 12w buf=16,light_3x3,SERIAL,1,12,1,16,12,13.839204,4,252456885
+1,buffer,heavy 12w buf=16,heavy_15x15,SERIAL,1,12,1,16,12,13.839204,4,1094928694
+1,workers_heavy,workers=1,heavy_15x15,SERIAL,1,1,1,8,12,13.839204,4,2561160558
+1,stages,encode+write dataset,io,n/a,0,1,1,1,1,13.839204,4,59585044
+1,buffer,heavy 12w buf=8,heavy_15x15,SERIAL,1,12,1,8,12,13.839204,4,1105725318
+1,nested,4w ROWS t=4 (private pools),heavy_15x15,ROWS,1,4,1,8,4,13.839204,4,743605524
+1,buffer,heavy 12w buf=4,heavy_15x15,SERIAL,1,12,1,4,12,13.839204,4,1110679982
+1,workers_light,workers=1,light_3x3,SERIAL,1,1,1,8,12,13.839204,4,341421345
+1,workers_light,workers=8,light_3x3,SERIAL,1,8,1,8,12,13.839204,4,236416149
+1,buffer,light 12w buf=8,light_3x3,SERIAL,1,12,1,8,12,13.839204,4,242045482
+1,buffer,light 12w buf=32,light_3x3,SERIAL,1,12,1,32,12,13.839204,4,243920807
+1,workers_heavy,workers=4,heavy_15x15,SERIAL,1,4,1,8,12,13.839204,4,1095631819
+1,workers_heavy,workers=8,heavy_15x15,SERIAL,1,8,1,8,12,13.839204,4,1103089051
+1,stages,read+decode dataset,io,n/a,1,1,0,1,1,13.839204,4,203554848
+1,io_scaling,heavy 12w 2r/2w,heavy_15x15,SERIAL,2,12,2,8,12,13.839204,4,1098694666
+1,io_scaling,light 12w 2r/2w,light_3x3,SERIAL,2,12,2,8,12,13.839204,4,212724581
+1,buffer,light 12w buf=4,light_3x3,SERIAL,1,12,1,4,12,13.839204,4,250652814
+1,workers_light,workers=12,light_3x3,SERIAL,1,12,1,8,12,13.839204,4,241785324
+1,workers_light,workers=2,light_3x3,SERIAL,1,2,1,8,12,13.839204,4,250579313
+1,workers_light,workers=4,light_3x3,SERIAL,1,4,1,8,12,13.839204,4,242972895
+1,buffer,heavy 12w buf=2,heavy_15x15,SERIAL,1,12,1,2,12,13.839204,4,1097893422
+1,buffer,light 12w buf=1,light_3x3,SERIAL,1,12,1,1,12,13.839204,4,318029049
+1,workers_heavy,workers=2,heavy_15x15,SERIAL,1,2,1,8,12,13.839204,4,1446325082
+1,buffer,light 12w buf=2,light_3x3,SERIAL,1,12,1,2,12,13.839204,4,266914013
+1,io_scaling,light 12w 3r/3w,light_3x3,SERIAL,3,12,3,8,12,13.839204,5,212465533
+1,nested,12w ROWS t=12 (shared pool),heavy_15x15,ROWS,1,12,1,8,12,13.839204,5,348748022
+1,workers_heavy,workers=12,heavy_15x15,SERIAL,1,12,1,8,12,13.839204,5,1100042184
+1,nested,1w ROWS t=12 (nested),heavy_15x15,ROWS,1,1,1,8,12,13.839204,5,409252362
+1,buffer,heavy 12w buf=32,heavy_15x15,SERIAL,1,12,1,32,12,13.839204,5,1104991327
+1,buffer,heavy 12w buf=1,heavy_15x15,SERIAL,1,12,1,1,12,13.839204,5,1500172037
+1,buffer,light 12w buf=16,light_3x3,SERIAL,1,12,1,16,12,13.839204,5,250900120
+1,buffer,heavy 12w buf=16,heavy_15x15,SERIAL,1,12,1,16,12,13.839204,5,1102185198
+1,workers_heavy,workers=1,heavy_15x15,SERIAL,1,1,1,8,12,13.839204,5,2552629884
+1,stages,encode+write dataset,io,n/a,0,1,1,1,1,13.839204,5,59112060
+1,buffer,heavy 12w buf=8,heavy_15x15,SERIAL,1,12,1,8,12,13.839204,5,1102382019
+1,nested,4w ROWS t=4 (private pools),heavy_15x15,ROWS,1,4,1,8,4,13.839204,5,742735194
+1,buffer,heavy 12w buf=4,heavy_15x15,SERIAL,1,12,1,4,12,13.839204,5,1112034912
+1,workers_light,workers=1,light_3x3,SERIAL,1,1,1,8,12,13.839204,5,323967801
+1,workers_light,workers=8,light_3x3,SERIAL,1,8,1,8,12,13.839204,5,239788693
+1,buffer,light 12w buf=8,light_3x3,SERIAL,1,12,1,8,12,13.839204,5,249415050
+1,buffer,light 12w buf=32,light_3x3,SERIAL,1,12,1,32,12,13.839204,5,252480902
+1,workers_heavy,workers=4,heavy_15x15,SERIAL,1,4,1,8,12,13.839204,5,1098679019
+1,workers_heavy,workers=8,heavy_15x15,SERIAL,1,8,1,8,12,13.839204,5,1100134685
+1,stages,read+decode dataset,io,n/a,1,1,0,1,1,13.839204,5,207391795
+1,io_scaling,heavy 12w 2r/2w,heavy_15x15,SERIAL,2,12,2,8,12,13.839204,5,1103228824
+1,io_scaling,light 12w 2r/2w,light_3x3,SERIAL,2,12,2,8,12,13.839204,5,234603485
+1,buffer,light 12w buf=4,light_3x3,SERIAL,1,12,1,4,12,13.839204,5,247767881
+1,workers_light,workers=12,light_3x3,SERIAL,1,12,1,8,12,13.839204,5,241128512
+1,workers_light,workers=2,light_3x3,SERIAL,1,2,1,8,12,13.839204,5,252840086
+1,workers_light,workers=4,light_3x3,SERIAL,1,4,1,8,12,13.839204,5,243145164
+1,buffer,heavy 12w buf=2,heavy_15x15,SERIAL,1,12,1,2,12,13.839204,5,1103161559
+1,buffer,light 12w buf=1,light_3x3,SERIAL,1,12,1,1,12,13.839204,5,327849592
+1,workers_heavy,workers=2,heavy_15x15,SERIAL,1,2,1,8,12,13.839204,5,1444383858
+1,buffer,light 12w buf=2,light_3x3,SERIAL,1,12,1,2,12,13.839204,5,260818226
+2,io_scaling,light 12w 3r/3w,light_3x3,SERIAL,3,12,3,8,12,13.839204,1,224453795
+2,nested,12w ROWS t=12 (shared pool),heavy_15x15,ROWS,1,12,1,8,12,13.839204,1,343760520
+2,workers_heavy,workers=12,heavy_15x15,SERIAL,1,12,1,8,12,13.839204,1,1095946331
+2,nested,1w ROWS t=12 (nested),heavy_15x15,ROWS,1,1,1,8,12,13.839204,1,410039473
+2,buffer,heavy 12w buf=32,heavy_15x15,SERIAL,1,12,1,32,12,13.839204,1,1103640434
+2,buffer,heavy 12w buf=1,heavy_15x15,SERIAL,1,12,1,1,12,13.839204,1,1501260446
+2,buffer,light 12w buf=16,light_3x3,SERIAL,1,12,1,16,12,13.839204,1,255705455
+2,buffer,heavy 12w buf=16,heavy_15x15,SERIAL,1,12,1,16,12,13.839204,1,1093326102
+2,workers_heavy,workers=1,heavy_15x15,SERIAL,1,1,1,8,12,13.839204,1,2543292734
+2,stages,encode+write dataset,io,n/a,0,1,1,1,1,13.839204,1,59022194
+2,buffer,heavy 12w buf=8,heavy_15x15,SERIAL,1,12,1,8,12,13.839204,1,1094671673
+2,nested,4w ROWS t=4 (private pools),heavy_15x15,ROWS,1,4,1,8,4,13.839204,1,736817558
+2,buffer,heavy 12w buf=4,heavy_15x15,SERIAL,1,12,1,4,12,13.839204,1,1102777018
+2,workers_light,workers=1,light_3x3,SERIAL,1,1,1,8,12,13.839204,1,334370616
+2,workers_light,workers=8,light_3x3,SERIAL,1,8,1,8,12,13.839204,1,246712796
+2,buffer,light 12w buf=8,light_3x3,SERIAL,1,12,1,8,12,13.839204,1,245079299
+2,buffer,light 12w buf=32,light_3x3,SERIAL,1,12,1,32,12,13.839204,1,242405010
+2,workers_heavy,workers=4,heavy_15x15,SERIAL,1,4,1,8,12,13.839204,1,1094672429
+2,workers_heavy,workers=8,heavy_15x15,SERIAL,1,8,1,8,12,13.839204,1,1102003607
+2,stages,read+decode dataset,io,n/a,1,1,0,1,1,13.839204,1,209059947
+2,io_scaling,heavy 12w 2r/2w,heavy_15x15,SERIAL,2,12,2,8,12,13.839204,1,1087788793
+2,io_scaling,light 12w 2r/2w,light_3x3,SERIAL,2,12,2,8,12,13.839204,1,223928744
+2,buffer,light 12w buf=4,light_3x3,SERIAL,1,12,1,4,12,13.839204,1,243393717
+2,workers_light,workers=12,light_3x3,SERIAL,1,12,1,8,12,13.839204,1,241413180
+2,workers_light,workers=2,light_3x3,SERIAL,1,2,1,8,12,13.839204,1,248689681
+2,workers_light,workers=4,light_3x3,SERIAL,1,4,1,8,12,13.839204,1,252923199
+2,buffer,heavy 12w buf=2,heavy_15x15,SERIAL,1,12,1,2,12,13.839204,1,1087640876
+2,buffer,light 12w buf=1,light_3x3,SERIAL,1,12,1,1,12,13.839204,1,324021641
+2,workers_heavy,workers=2,heavy_15x15,SERIAL,1,2,1,8,12,13.839204,1,1440407362
+2,buffer,light 12w buf=2,light_3x3,SERIAL,1,12,1,2,12,13.839204,1,254185737
+2,io_scaling,light 12w 3r/3w,light_3x3,SERIAL,3,12,3,8,12,13.839204,2,230511351
+2,nested,12w ROWS t=12 (shared pool),heavy_15x15,ROWS,1,12,1,8,12,13.839204,2,342651437
+2,workers_heavy,workers=12,heavy_15x15,SERIAL,1,12,1,8,12,13.839204,2,1092037762
+2,nested,1w ROWS t=12 (nested),heavy_15x15,ROWS,1,1,1,8,12,13.839204,2,406215220
+2,buffer,heavy 12w buf=32,heavy_15x15,SERIAL,1,12,1,32,12,13.839204,2,1096028383
+2,buffer,heavy 12w buf=1,heavy_15x15,SERIAL,1,12,1,1,12,13.839204,2,1514587194
+2,buffer,light 12w buf=16,light_3x3,SERIAL,1,12,1,16,12,13.839204,2,237413908
+2,buffer,heavy 12w buf=16,heavy_15x15,SERIAL,1,12,1,16,12,13.839204,2,1116738746
+2,workers_heavy,workers=1,heavy_15x15,SERIAL,1,1,1,8,12,13.839204,2,2547058035
+2,stages,encode+write dataset,io,n/a,0,1,1,1,1,13.839204,2,59097467
+2,buffer,heavy 12w buf=8,heavy_15x15,SERIAL,1,12,1,8,12,13.839204,2,1095591953
+2,nested,4w ROWS t=4 (private pools),heavy_15x15,ROWS,1,4,1,8,4,13.839204,2,742080524
+2,buffer,heavy 12w buf=4,heavy_15x15,SERIAL,1,12,1,4,12,13.839204,2,1102611879
+2,workers_light,workers=1,light_3x3,SERIAL,1,1,1,8,12,13.839204,2,337035523
+2,workers_light,workers=8,light_3x3,SERIAL,1,8,1,8,12,13.839204,2,243189012
+2,buffer,light 12w buf=8,light_3x3,SERIAL,1,12,1,8,12,13.839204,2,251575112
+2,buffer,light 12w buf=32,light_3x3,SERIAL,1,12,1,32,12,13.839204,2,238551228
+2,workers_heavy,workers=4,heavy_15x15,SERIAL,1,4,1,8,12,13.839204,2,1089398470
+2,workers_heavy,workers=8,heavy_15x15,SERIAL,1,8,1,8,12,13.839204,2,1092861540
+2,stages,read+decode dataset,io,n/a,1,1,0,1,1,13.839204,2,208576881
+2,io_scaling,heavy 12w 2r/2w,heavy_15x15,SERIAL,2,12,2,8,12,13.839204,2,1105177080
+2,io_scaling,light 12w 2r/2w,light_3x3,SERIAL,2,12,2,8,12,13.839204,2,225250895
+2,buffer,light 12w buf=4,light_3x3,SERIAL,1,12,1,4,12,13.839204,2,258146786
+2,workers_light,workers=12,light_3x3,SERIAL,1,12,1,8,12,13.839204,2,250304867
+2,workers_light,workers=2,light_3x3,SERIAL,1,2,1,8,12,13.839204,2,254995183
+2,workers_light,workers=4,light_3x3,SERIAL,1,4,1,8,12,13.839204,2,242678177
+2,buffer,heavy 12w buf=2,heavy_15x15,SERIAL,1,12,1,2,12,13.839204,2,1102434227
+2,buffer,light 12w buf=1,light_3x3,SERIAL,1,12,1,1,12,13.839204,2,320349617
+2,workers_heavy,workers=2,heavy_15x15,SERIAL,1,2,1,8,12,13.839204,2,1443646926
+2,buffer,light 12w buf=2,light_3x3,SERIAL,1,12,1,2,12,13.839204,2,270106080
+2,io_scaling,light 12w 3r/3w,light_3x3,SERIAL,3,12,3,8,12,13.839204,3,231027106
+2,nested,12w ROWS t=12 (shared pool),heavy_15x15,ROWS,1,12,1,8,12,13.839204,3,343464932
+2,workers_heavy,workers=12,heavy_15x15,SERIAL,1,12,1,8,12,13.839204,3,1106284095
+2,nested,1w ROWS t=12 (nested),heavy_15x15,ROWS,1,1,1,8,12,13.839204,3,419914414
+2,buffer,heavy 12w buf=32,heavy_15x15,SERIAL,1,12,1,32,12,13.839204,3,1102634182
+2,buffer,heavy 12w buf=1,heavy_15x15,SERIAL,1,12,1,1,12,13.839204,3,1510008504
+2,buffer,light 12w buf=16,light_3x3,SERIAL,1,12,1,16,12,13.839204,3,255873174
+2,buffer,heavy 12w buf=16,heavy_15x15,SERIAL,1,12,1,16,12,13.839204,3,1097048570
+2,workers_heavy,workers=1,heavy_15x15,SERIAL,1,1,1,8,12,13.839204,3,2553252206
+2,stages,encode+write dataset,io,n/a,0,1,1,1,1,13.839204,3,59131501
+2,buffer,heavy 12w buf=8,heavy_15x15,SERIAL,1,12,1,8,12,13.839204,3,1092435087
+2,nested,4w ROWS t=4 (private pools),heavy_15x15,ROWS,1,4,1,8,4,13.839204,3,738808354
+2,buffer,heavy 12w buf=4,heavy_15x15,SERIAL,1,12,1,4,12,13.839204,3,1108105806
+2,workers_light,workers=1,light_3x3,SERIAL,1,1,1,8,12,13.839204,3,339562527
+2,workers_light,workers=8,light_3x3,SERIAL,1,8,1,8,12,13.839204,3,245395662
+2,buffer,light 12w buf=8,light_3x3,SERIAL,1,12,1,8,12,13.839204,3,250334180
+2,buffer,light 12w buf=32,light_3x3,SERIAL,1,12,1,32,12,13.839204,3,250521501
+2,workers_heavy,workers=4,heavy_15x15,SERIAL,1,4,1,8,12,13.839204,3,1093513961
+2,workers_heavy,workers=8,heavy_15x15,SERIAL,1,8,1,8,12,13.839204,3,1103338704
+2,stages,read+decode dataset,io,n/a,1,1,0,1,1,13.839204,3,215295869
+2,io_scaling,heavy 12w 2r/2w,heavy_15x15,SERIAL,2,12,2,8,12,13.839204,3,1109969001
+2,io_scaling,light 12w 2r/2w,light_3x3,SERIAL,2,12,2,8,12,13.839204,3,228508789
+2,buffer,light 12w buf=4,light_3x3,SERIAL,1,12,1,4,12,13.839204,3,241013997
+2,workers_light,workers=12,light_3x3,SERIAL,1,12,1,8,12,13.839204,3,246383991
+2,workers_light,workers=2,light_3x3,SERIAL,1,2,1,8,12,13.839204,3,248459536
+2,workers_light,workers=4,light_3x3,SERIAL,1,4,1,8,12,13.839204,3,238732318
+2,buffer,heavy 12w buf=2,heavy_15x15,SERIAL,1,12,1,2,12,13.839204,3,1096002487
+2,buffer,light 12w buf=1,light_3x3,SERIAL,1,12,1,1,12,13.839204,3,324762231
+2,workers_heavy,workers=2,heavy_15x15,SERIAL,1,2,1,8,12,13.839204,3,1442891049
+2,buffer,light 12w buf=2,light_3x3,SERIAL,1,12,1,2,12,13.839204,3,263482036
+2,io_scaling,light 12w 3r/3w,light_3x3,SERIAL,3,12,3,8,12,13.839204,4,226494698
+2,nested,12w ROWS t=12 (shared pool),heavy_15x15,ROWS,1,12,1,8,12,13.839204,4,348337107
+2,workers_heavy,workers=12,heavy_15x15,SERIAL,1,12,1,8,12,13.839204,4,1099822711
+2,nested,1w ROWS t=12 (nested),heavy_15x15,ROWS,1,1,1,8,12,13.839204,4,421539907
+2,buffer,heavy 12w buf=32,heavy_15x15,SERIAL,1,12,1,32,12,13.839204,4,1099395016
+2,buffer,heavy 12w buf=1,heavy_15x15,SERIAL,1,12,1,1,12,13.839204,4,1508968938
+2,buffer,light 12w buf=16,light_3x3,SERIAL,1,12,1,16,12,13.839204,4,256322883
+2,buffer,heavy 12w buf=16,heavy_15x15,SERIAL,1,12,1,16,12,13.839204,4,1100937868
+2,workers_heavy,workers=1,heavy_15x15,SERIAL,1,1,1,8,12,13.839204,4,2561029046
+2,stages,encode+write dataset,io,n/a,0,1,1,1,1,13.839204,4,58774250
+2,buffer,heavy 12w buf=8,heavy_15x15,SERIAL,1,12,1,8,12,13.839204,4,1106022981
+2,nested,4w ROWS t=4 (private pools),heavy_15x15,ROWS,1,4,1,8,4,13.839204,4,737490996
+2,buffer,heavy 12w buf=4,heavy_15x15,SERIAL,1,12,1,4,12,13.839204,4,1097434074
+2,workers_light,workers=1,light_3x3,SERIAL,1,1,1,8,12,13.839204,4,332062822
+2,workers_light,workers=8,light_3x3,SERIAL,1,8,1,8,12,13.839204,4,255615469
+2,buffer,light 12w buf=8,light_3x3,SERIAL,1,12,1,8,12,13.839204,4,244574461
+2,buffer,light 12w buf=32,light_3x3,SERIAL,1,12,1,32,12,13.839204,4,250191672
+2,workers_heavy,workers=4,heavy_15x15,SERIAL,1,4,1,8,12,13.839204,4,1094057006
+2,workers_heavy,workers=8,heavy_15x15,SERIAL,1,8,1,8,12,13.839204,4,1093081383
+2,stages,read+decode dataset,io,n/a,1,1,0,1,1,13.839204,4,209148030
+2,io_scaling,heavy 12w 2r/2w,heavy_15x15,SERIAL,2,12,2,8,12,13.839204,4,1105010815
+2,io_scaling,light 12w 2r/2w,light_3x3,SERIAL,2,12,2,8,12,13.839204,4,234752338
+2,buffer,light 12w buf=4,light_3x3,SERIAL,1,12,1,4,12,13.839204,4,247052818
+2,workers_light,workers=12,light_3x3,SERIAL,1,12,1,8,12,13.839204,4,244963211
+2,workers_light,workers=2,light_3x3,SERIAL,1,2,1,8,12,13.839204,4,247814118
+2,workers_light,workers=4,light_3x3,SERIAL,1,4,1,8,12,13.839204,4,246017556
+2,buffer,heavy 12w buf=2,heavy_15x15,SERIAL,1,12,1,2,12,13.839204,4,1093677745
+2,buffer,light 12w buf=1,light_3x3,SERIAL,1,12,1,1,12,13.839204,4,338196270
+2,workers_heavy,workers=2,heavy_15x15,SERIAL,1,2,1,8,12,13.839204,4,1447362526
+2,buffer,light 12w buf=2,light_3x3,SERIAL,1,12,1,2,12,13.839204,4,257795276
+2,io_scaling,light 12w 3r/3w,light_3x3,SERIAL,3,12,3,8,12,13.839204,5,213424796
+2,nested,12w ROWS t=12 (shared pool),heavy_15x15,ROWS,1,12,1,8,12,13.839204,5,417522316
+2,workers_heavy,workers=12,heavy_15x15,SERIAL,1,12,1,8,12,13.839204,5,1114457214
+2,nested,1w ROWS t=12 (nested),heavy_15x15,ROWS,1,1,1,8,12,13.839204,5,419942539
+2,buffer,heavy 12w buf=32,heavy_15x15,SERIAL,1,12,1,32,12,13.839204,5,1100842720
+2,buffer,heavy 12w buf=1,heavy_15x15,SERIAL,1,12,1,1,12,13.839204,5,1503554029
+2,buffer,light 12w buf=16,light_3x3,SERIAL,1,12,1,16,12,13.839204,5,243344269
+2,buffer,heavy 12w buf=16,heavy_15x15,SERIAL,1,12,1,16,12,13.839204,5,1092847963
+2,workers_heavy,workers=1,heavy_15x15,SERIAL,1,1,1,8,12,13.839204,5,2558127274
+2,stages,encode+write dataset,io,n/a,0,1,1,1,1,13.839204,5,58787400
+2,buffer,heavy 12w buf=8,heavy_15x15,SERIAL,1,12,1,8,12,13.839204,5,1094396597
+2,nested,4w ROWS t=4 (private pools),heavy_15x15,ROWS,1,4,1,8,4,13.839204,5,744134917
+2,buffer,heavy 12w buf=4,heavy_15x15,SERIAL,1,12,1,4,12,13.839204,5,1109417544
+2,workers_light,workers=1,light_3x3,SERIAL,1,1,1,8,12,13.839204,5,338844075
+2,workers_light,workers=8,light_3x3,SERIAL,1,8,1,8,12,13.839204,5,240210448
+2,buffer,light 12w buf=8,light_3x3,SERIAL,1,12,1,8,12,13.839204,5,256289286
+2,buffer,light 12w buf=32,light_3x3,SERIAL,1,12,1,32,12,13.839204,5,244446716
+2,workers_heavy,workers=4,heavy_15x15,SERIAL,1,4,1,8,12,13.839204,5,1094548368
+2,workers_heavy,workers=8,heavy_15x15,SERIAL,1,8,1,8,12,13.839204,5,1101805932
+2,stages,read+decode dataset,io,n/a,1,1,0,1,1,13.839204,5,210318562
+2,io_scaling,heavy 12w 2r/2w,heavy_15x15,SERIAL,2,12,2,8,12,13.839204,5,1105174702
+2,io_scaling,light 12w 2r/2w,light_3x3,SERIAL,2,12,2,8,12,13.839204,5,225423277
+2,buffer,light 12w buf=4,light_3x3,SERIAL,1,12,1,4,12,13.839204,5,260147673
+2,workers_light,workers=12,light_3x3,SERIAL,1,12,1,8,12,13.839204,5,241213562
+2,workers_light,workers=2,light_3x3,SERIAL,1,2,1,8,12,13.839204,5,270091861
+2,workers_light,workers=4,light_3x3,SERIAL,1,4,1,8,12,13.839204,5,243302971
+2,buffer,heavy 12w buf=2,heavy_15x15,SERIAL,1,12,1,2,12,13.839204,5,1103261369
+2,buffer,light 12w buf=1,light_3x3,SERIAL,1,12,1,1,12,13.839204,5,323501585
+2,workers_heavy,workers=2,heavy_15x15,SERIAL,1,2,1,8,12,13.839204,5,1457836254
+2,buffer,light 12w buf=2,light_3x3,SERIAL,1,12,1,2,12,13.839204,5,254289435
+3,io_scaling,light 12w 3r/3w,light_3x3,SERIAL,3,12,3,8,12,13.839204,1,213813572
+3,nested,12w ROWS t=12 (shared pool),heavy_15x15,ROWS,1,12,1,8,12,13.839204,1,357944046
+3,workers_heavy,workers=12,heavy_15x15,SERIAL,1,12,1,8,12,13.839204,1,1097763217
+3,nested,1w ROWS t=12 (nested),heavy_15x15,ROWS,1,1,1,8,12,13.839204,1,406965982
+3,buffer,heavy 12w buf=32,heavy_15x15,SERIAL,1,12,1,32,12,13.839204,1,1098509304
+3,buffer,heavy 12w buf=1,heavy_15x15,SERIAL,1,12,1,1,12,13.839204,1,1510640291
+3,buffer,light 12w buf=16,light_3x3,SERIAL,1,12,1,16,12,13.839204,1,255652783
+3,buffer,heavy 12w buf=16,heavy_15x15,SERIAL,1,12,1,16,12,13.839204,1,1101531307
+3,workers_heavy,workers=1,heavy_15x15,SERIAL,1,1,1,8,12,13.839204,1,2546287230
+3,stages,encode+write dataset,io,n/a,0,1,1,1,1,13.839204,1,58524709
+3,buffer,heavy 12w buf=8,heavy_15x15,SERIAL,1,12,1,8,12,13.839204,1,1114519818
+3,nested,4w ROWS t=4 (private pools),heavy_15x15,ROWS,1,4,1,8,4,13.839204,1,747874416
+3,buffer,heavy 12w buf=4,heavy_15x15,SERIAL,1,12,1,4,12,13.839204,1,1116126241
+3,workers_light,workers=1,light_3x3,SERIAL,1,1,1,8,12,13.839204,1,323233268
+3,workers_light,workers=8,light_3x3,SERIAL,1,8,1,8,12,13.839204,1,253583329
+3,buffer,light 12w buf=8,light_3x3,SERIAL,1,12,1,8,12,13.839204,1,240808620
+3,buffer,light 12w buf=32,light_3x3,SERIAL,1,12,1,32,12,13.839204,1,241568955
+3,workers_heavy,workers=4,heavy_15x15,SERIAL,1,4,1,8,12,13.839204,1,1098079488
+3,workers_heavy,workers=8,heavy_15x15,SERIAL,1,8,1,8,12,13.839204,1,1104208337
+3,stages,read+decode dataset,io,n/a,1,1,0,1,1,13.839204,1,208485858
+3,io_scaling,heavy 12w 2r/2w,heavy_15x15,SERIAL,2,12,2,8,12,13.839204,1,1099827989
+3,io_scaling,light 12w 2r/2w,light_3x3,SERIAL,2,12,2,8,12,13.839204,1,226670980
+3,buffer,light 12w buf=4,light_3x3,SERIAL,1,12,1,4,12,13.839204,1,247841295
+3,workers_light,workers=12,light_3x3,SERIAL,1,12,1,8,12,13.839204,1,238495902
+3,workers_light,workers=2,light_3x3,SERIAL,1,2,1,8,12,13.839204,1,257331458
+3,workers_light,workers=4,light_3x3,SERIAL,1,4,1,8,12,13.839204,1,238867386
+3,buffer,heavy 12w buf=2,heavy_15x15,SERIAL,1,12,1,2,12,13.839204,1,1098802687
+3,buffer,light 12w buf=1,light_3x3,SERIAL,1,12,1,1,12,13.839204,1,323398841
+3,workers_heavy,workers=2,heavy_15x15,SERIAL,1,2,1,8,12,13.839204,1,1447567996
+3,buffer,light 12w buf=2,light_3x3,SERIAL,1,12,1,2,12,13.839204,1,254781556
+3,io_scaling,light 12w 3r/3w,light_3x3,SERIAL,3,12,3,8,12,13.839204,2,237966246
+3,nested,12w ROWS t=12 (shared pool),heavy_15x15,ROWS,1,12,1,8,12,13.839204,2,344228695
+3,workers_heavy,workers=12,heavy_15x15,SERIAL,1,12,1,8,12,13.839204,2,1095969971
+3,nested,1w ROWS t=12 (nested),heavy_15x15,ROWS,1,1,1,8,12,13.839204,2,415254841
+3,buffer,heavy 12w buf=32,heavy_15x15,SERIAL,1,12,1,32,12,13.839204,2,1096526190
+3,buffer,heavy 12w buf=1,heavy_15x15,SERIAL,1,12,1,1,12,13.839204,2,1506133924
+3,buffer,light 12w buf=16,light_3x3,SERIAL,1,12,1,16,12,13.839204,2,249992362
+3,buffer,heavy 12w buf=16,heavy_15x15,SERIAL,1,12,1,16,12,13.839204,2,1090714886
+3,workers_heavy,workers=1,heavy_15x15,SERIAL,1,1,1,8,12,13.839204,2,2556218712
+3,stages,encode+write dataset,io,n/a,0,1,1,1,1,13.839204,2,59518544
+3,buffer,heavy 12w buf=8,heavy_15x15,SERIAL,1,12,1,8,12,13.839204,2,1094692443
+3,nested,4w ROWS t=4 (private pools),heavy_15x15,ROWS,1,4,1,8,4,13.839204,2,744783075
+3,buffer,heavy 12w buf=4,heavy_15x15,SERIAL,1,12,1,4,12,13.839204,2,1126504880
+3,workers_light,workers=1,light_3x3,SERIAL,1,1,1,8,12,13.839204,2,325839085
+3,workers_light,workers=8,light_3x3,SERIAL,1,8,1,8,12,13.839204,2,245178095
+3,buffer,light 12w buf=8,light_3x3,SERIAL,1,12,1,8,12,13.839204,2,237141870
+3,buffer,light 12w buf=32,light_3x3,SERIAL,1,12,1,32,12,13.839204,2,241153938
+3,workers_heavy,workers=4,heavy_15x15,SERIAL,1,4,1,8,12,13.839204,2,1099464139
+3,workers_heavy,workers=8,heavy_15x15,SERIAL,1,8,1,8,12,13.839204,2,1113402201
+3,stages,read+decode dataset,io,n/a,1,1,0,1,1,13.839204,2,208390238
+3,io_scaling,heavy 12w 2r/2w,heavy_15x15,SERIAL,2,12,2,8,12,13.839204,2,1100364656
+3,io_scaling,light 12w 2r/2w,light_3x3,SERIAL,2,12,2,8,12,13.839204,2,227276090
+3,buffer,light 12w buf=4,light_3x3,SERIAL,1,12,1,4,12,13.839204,2,247563933
+3,workers_light,workers=12,light_3x3,SERIAL,1,12,1,8,12,13.839204,2,238499257
+3,workers_light,workers=2,light_3x3,SERIAL,1,2,1,8,12,13.839204,2,254162466
+3,workers_light,workers=4,light_3x3,SERIAL,1,4,1,8,12,13.839204,2,251726573
+3,buffer,heavy 12w buf=2,heavy_15x15,SERIAL,1,12,1,2,12,13.839204,2,1097727052
+3,buffer,light 12w buf=1,light_3x3,SERIAL,1,12,1,1,12,13.839204,2,316824083
+3,workers_heavy,workers=2,heavy_15x15,SERIAL,1,2,1,8,12,13.839204,2,1435002323
+3,buffer,light 12w buf=2,light_3x3,SERIAL,1,12,1,2,12,13.839204,2,254140474
+3,io_scaling,light 12w 3r/3w,light_3x3,SERIAL,3,12,3,8,12,13.839204,3,223203561
+3,nested,12w ROWS t=12 (shared pool),heavy_15x15,ROWS,1,12,1,8,12,13.839204,3,349627282
+3,workers_heavy,workers=12,heavy_15x15,SERIAL,1,12,1,8,12,13.839204,3,1107413717
+3,nested,1w ROWS t=12 (nested),heavy_15x15,ROWS,1,1,1,8,12,13.839204,3,410407424
+3,buffer,heavy 12w buf=32,heavy_15x15,SERIAL,1,12,1,32,12,13.839204,3,1097029994
+3,buffer,heavy 12w buf=1,heavy_15x15,SERIAL,1,12,1,1,12,13.839204,3,1501743851
+3,buffer,light 12w buf=16,light_3x3,SERIAL,1,12,1,16,12,13.839204,3,243731552
+3,buffer,heavy 12w buf=16,heavy_15x15,SERIAL,1,12,1,16,12,13.839204,3,1100284195
+3,workers_heavy,workers=1,heavy_15x15,SERIAL,1,1,1,8,12,13.839204,3,2559386150
+3,stages,encode+write dataset,io,n/a,0,1,1,1,1,13.839204,3,62875947
+3,buffer,heavy 12w buf=8,heavy_15x15,SERIAL,1,12,1,8,12,13.839204,3,1100857909
+3,nested,4w ROWS t=4 (private pools),heavy_15x15,ROWS,1,4,1,8,4,13.839204,3,747634899
+3,buffer,heavy 12w buf=4,heavy_15x15,SERIAL,1,12,1,4,12,13.839204,3,1101249894
+3,workers_light,workers=1,light_3x3,SERIAL,1,1,1,8,12,13.839204,3,333481285
+3,workers_light,workers=8,light_3x3,SERIAL,1,8,1,8,12,13.839204,3,245964593
+3,buffer,light 12w buf=8,light_3x3,SERIAL,1,12,1,8,12,13.839204,3,243761488
+3,buffer,light 12w buf=32,light_3x3,SERIAL,1,12,1,32,12,13.839204,3,253655086
+3,workers_heavy,workers=4,heavy_15x15,SERIAL,1,4,1,8,12,13.839204,3,1101223424
+3,workers_heavy,workers=8,heavy_15x15,SERIAL,1,8,1,8,12,13.839204,3,1107521214
+3,stages,read+decode dataset,io,n/a,1,1,0,1,1,13.839204,3,209860518
+3,io_scaling,heavy 12w 2r/2w,heavy_15x15,SERIAL,2,12,2,8,12,13.839204,3,1120109135
+3,io_scaling,light 12w 2r/2w,light_3x3,SERIAL,2,12,2,8,12,13.839204,3,235918587
+3,buffer,light 12w buf=4,light_3x3,SERIAL,1,12,1,4,12,13.839204,3,252118757
+3,workers_light,workers=12,light_3x3,SERIAL,1,12,1,8,12,13.839204,3,244841817
+3,workers_light,workers=2,light_3x3,SERIAL,1,2,1,8,12,13.839204,3,261710876
+3,workers_light,workers=4,light_3x3,SERIAL,1,4,1,8,12,13.839204,3,246717409
+3,buffer,heavy 12w buf=2,heavy_15x15,SERIAL,1,12,1,2,12,13.839204,3,1091687994
+3,buffer,light 12w buf=1,light_3x3,SERIAL,1,12,1,1,12,13.839204,3,324758476
+3,workers_heavy,workers=2,heavy_15x15,SERIAL,1,2,1,8,12,13.839204,3,1454351047
+3,buffer,light 12w buf=2,light_3x3,SERIAL,1,12,1,2,12,13.839204,3,257871405
+3,io_scaling,light 12w 3r/3w,light_3x3,SERIAL,3,12,3,8,12,13.839204,4,214887679
+3,nested,12w ROWS t=12 (shared pool),heavy_15x15,ROWS,1,12,1,8,12,13.839204,4,348972538
+3,workers_heavy,workers=12,heavy_15x15,SERIAL,1,12,1,8,12,13.839204,4,1105162164
+3,nested,1w ROWS t=12 (nested),heavy_15x15,ROWS,1,1,1,8,12,13.839204,4,410803315
+3,buffer,heavy 12w buf=32,heavy_15x15,SERIAL,1,12,1,32,12,13.839204,4,1102024071
+3,buffer,heavy 12w buf=1,heavy_15x15,SERIAL,1,12,1,1,12,13.839204,4,1501125540
+3,buffer,light 12w buf=16,light_3x3,SERIAL,1,12,1,16,12,13.839204,4,257764552
+3,buffer,heavy 12w buf=16,heavy_15x15,SERIAL,1,12,1,16,12,13.839204,4,1098188935
+3,workers_heavy,workers=1,heavy_15x15,SERIAL,1,1,1,8,12,13.839204,4,2552904549
+3,stages,encode+write dataset,io,n/a,0,1,1,1,1,13.839204,4,58697491
+3,buffer,heavy 12w buf=8,heavy_15x15,SERIAL,1,12,1,8,12,13.839204,4,1081894169
+3,nested,4w ROWS t=4 (private pools),heavy_15x15,ROWS,1,4,1,8,4,13.839204,4,750904702
+3,buffer,heavy 12w buf=4,heavy_15x15,SERIAL,1,12,1,4,12,13.839204,4,1097984675
+3,workers_light,workers=1,light_3x3,SERIAL,1,1,1,8,12,13.839204,4,330241219
+3,workers_light,workers=8,light_3x3,SERIAL,1,8,1,8,12,13.839204,4,240408672
+3,buffer,light 12w buf=8,light_3x3,SERIAL,1,12,1,8,12,13.839204,4,243263870
+3,buffer,light 12w buf=32,light_3x3,SERIAL,1,12,1,32,12,13.839204,4,252891512
+3,workers_heavy,workers=4,heavy_15x15,SERIAL,1,4,1,8,12,13.839204,4,1095522498
+3,workers_heavy,workers=8,heavy_15x15,SERIAL,1,8,1,8,12,13.839204,4,1078833561
+3,stages,read+decode dataset,io,n/a,1,1,0,1,1,13.839204,4,217885126
+3,io_scaling,heavy 12w 2r/2w,heavy_15x15,SERIAL,2,12,2,8,12,13.839204,4,1110486474
+3,io_scaling,light 12w 2r/2w,light_3x3,SERIAL,2,12,2,8,12,13.839204,4,216726284
+3,buffer,light 12w buf=4,light_3x3,SERIAL,1,12,1,4,12,13.839204,4,248470011
+3,workers_light,workers=12,light_3x3,SERIAL,1,12,1,8,12,13.839204,4,243781958
+3,workers_light,workers=2,light_3x3,SERIAL,1,2,1,8,12,13.839204,4,260443671
+3,workers_light,workers=4,light_3x3,SERIAL,1,4,1,8,12,13.839204,4,237475838
+3,buffer,heavy 12w buf=2,heavy_15x15,SERIAL,1,12,1,2,12,13.839204,4,1101281128
+3,buffer,light 12w buf=1,light_3x3,SERIAL,1,12,1,1,12,13.839204,4,311349444
+3,workers_heavy,workers=2,heavy_15x15,SERIAL,1,2,1,8,12,13.839204,4,1449824799
+3,buffer,light 12w buf=2,light_3x3,SERIAL,1,12,1,2,12,13.839204,4,259631669
+3,io_scaling,light 12w 3r/3w,light_3x3,SERIAL,3,12,3,8,12,13.839204,5,223816164
+3,nested,12w ROWS t=12 (shared pool),heavy_15x15,ROWS,1,12,1,8,12,13.839204,5,343087310
+3,workers_heavy,workers=12,heavy_15x15,SERIAL,1,12,1,8,12,13.839204,5,1100423396
+3,nested,1w ROWS t=12 (nested),heavy_15x15,ROWS,1,1,1,8,12,13.839204,5,427438042
+3,buffer,heavy 12w buf=32,heavy_15x15,SERIAL,1,12,1,32,12,13.839204,5,1108894350
+3,buffer,heavy 12w buf=1,heavy_15x15,SERIAL,1,12,1,1,12,13.839204,5,1513815444
+3,buffer,light 12w buf=16,light_3x3,SERIAL,1,12,1,16,12,13.839204,5,247644475
+3,buffer,heavy 12w buf=16,heavy_15x15,SERIAL,1,12,1,16,12,13.839204,5,1101322560
+3,workers_heavy,workers=1,heavy_15x15,SERIAL,1,1,1,8,12,13.839204,5,2567289695
+3,stages,encode+write dataset,io,n/a,0,1,1,1,1,13.839204,5,59158444
+3,buffer,heavy 12w buf=8,heavy_15x15,SERIAL,1,12,1,8,12,13.839204,5,1107040118
+3,nested,4w ROWS t=4 (private pools),heavy_15x15,ROWS,1,4,1,8,4,13.839204,5,740503877
+3,buffer,heavy 12w buf=4,heavy_15x15,SERIAL,1,12,1,4,12,13.839204,5,1113521710
+3,workers_light,workers=1,light_3x3,SERIAL,1,1,1,8,12,13.839204,5,334786941
+3,workers_light,workers=8,light_3x3,SERIAL,1,8,1,8,12,13.839204,5,240225129
+3,buffer,light 12w buf=8,light_3x3,SERIAL,1,12,1,8,12,13.839204,5,243532865
+3,buffer,light 12w buf=32,light_3x3,SERIAL,1,12,1,32,12,13.839204,5,237149925
+3,workers_heavy,workers=4,heavy_15x15,SERIAL,1,4,1,8,12,13.839204,5,1100831623
+3,workers_heavy,workers=8,heavy_15x15,SERIAL,1,8,1,8,12,13.839204,5,1110119889
+3,stages,read+decode dataset,io,n/a,1,1,0,1,1,13.839204,5,213850312
+3,io_scaling,heavy 12w 2r/2w,heavy_15x15,SERIAL,2,12,2,8,12,13.839204,5,1098413896
+3,io_scaling,light 12w 2r/2w,light_3x3,SERIAL,2,12,2,8,12,13.839204,5,238889782
+3,buffer,light 12w buf=4,light_3x3,SERIAL,1,12,1,4,12,13.839204,5,240048624
+3,workers_light,workers=12,light_3x3,SERIAL,1,12,1,8,12,13.839204,5,238654365
+3,workers_light,workers=2,light_3x3,SERIAL,1,2,1,8,12,13.839204,5,244447028
+3,workers_light,workers=4,light_3x3,SERIAL,1,4,1,8,12,13.839204,5,237758732
+3,buffer,heavy 12w buf=2,heavy_15x15,SERIAL,1,12,1,2,12,13.839204,5,1098749836
+3,buffer,light 12w buf=1,light_3x3,SERIAL,1,12,1,1,12,13.839204,5,327540579
+3,workers_heavy,workers=2,heavy_15x15,SERIAL,1,2,1,8,12,13.839204,5,1444631613
+3,buffer,light 12w buf=2,light_3x3,SERIAL,1,12,1,2,12,13.839204,5,257894591
