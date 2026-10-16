@@ -4,9 +4,14 @@ import convolution.defaultThreads
 import convolution.rowsConvolve
 import convolution.serialConvolve
 import convolution.shutdownConvolutionPools
+import filters.BLUR
 import images.Bitmap
 import images.readImage
+import images.writeImage
 import kotlinx.coroutines.runBlocking
+import pipeline.Mode
+import pipeline.PipelineConfig
+import pipeline.processDataset
 import java.io.File
 import java.nio.file.Paths
 
@@ -174,6 +179,244 @@ fun runParallelBenchmark(
     println("Raw data -> ${File(args.outDir, "benchmark_task2.csv").absolutePath}")
 }
 
+// ---------------------------------------------------------------------------
+// Task 3: streaming pipeline (read -> convolve -> write) over a dataset
+// ---------------------------------------------------------------------------
+
+/**
+ * Curated dataset of large images (~14 MP total): few files so one full pass
+ * is a single long timed unit (>= ~1.3 s of convolution work at 1 worker with
+ * the heavy kernel), large files so per-pass OS noise stays in the low %.
+ */
+private fun prepareDataset(resourcesDir: File): Pair<File, Double> {
+    val wanted =
+        listOf(
+            "airplaneU2.bmp",
+            "brickwall.bmp",
+            "carpet.bmp",
+            "man.bmp",
+            "Rainier.bmp",
+            "Maltese.bmp",
+            "textureA.bmp",
+            "textureB.bmp",
+        )
+    val dir = File(repoRoot(), "build/benchmark_dataset")
+    dir.deleteRecursively()
+    dir.mkdirs()
+    var megapixels = 0.0
+    for (name in wanted) {
+        val src = File(resourcesDir, name)
+        if (!src.exists()) continue
+        src.copyTo(File(dir, name), overwrite = true)
+        val img = readImage(src.absolutePath)
+        megapixels += img.size.toDouble() * img[0].size / 1e6
+    }
+    return dir to megapixels
+}
+
+fun runPipelineBenchmark(
+    resourcesDir: File,
+    args: BenchArgs,
+) {
+    val cores = defaultThreads
+    val (datasetDir, megapixels) = prepareDataset(resourcesDir)
+    val outputDir = File(repoRoot(), "build/benchmark_output").also { it.mkdirs() }
+    val files = datasetDir.listFiles { f -> f.isFile }?.toList() ?: emptyList()
+
+    println("=== Task 3: Pipeline Benchmark ===")
+    println("Dataset : ${files.size} images, ${"%.1f".format(megapixels)} MP total")
+    println("CPU     : $cores OS threads; workers pinned to a dedicated pool of `workers` threads")
+    println("Reps    : 1 warmup + ${args.reps} measured per config, interleaved (seed ${args.seed}), raw ns\n")
+
+    val mp = megapixels.toString()
+
+    fun passDims(
+        scenario: String,
+        label: String,
+        kernelName: String,
+        mode: Mode,
+        cfg: PipelineConfig,
+    ) = listOf(
+        "scenario" to scenario,
+        "label" to label,
+        "kernel" to kernelName,
+        "mode" to mode.name,
+        "readers" to cfg.numReaders.toString(),
+        "workers" to cfg.numWorkers.toString(),
+        "writers" to cfg.numWriters.toString(),
+        "buffer" to cfg.bufferSize.toString(),
+        "conv_threads" to cfg.convThreads.toString(),
+        "dataset_mp" to mp,
+    )
+
+    fun passJob(
+        scenario: String,
+        label: String,
+        kernelName: String,
+        kernel: Bitmap,
+        mode: Mode,
+        cfg: PipelineConfig,
+    ) = BenchJob(
+        dims = passDims(scenario, label, kernelName, mode, cfg),
+        warmup = { processDataset(datasetDir, outputDir, kernel, mode, cfg) },
+        measure = {
+            val t0 = System.nanoTime()
+            processDataset(datasetDir, outputDir, kernel, mode, cfg)
+            System.nanoTime() - t0
+        },
+    )
+
+    val workerCounts = listOf(1, 2, 4, 8, 12, 14).filter { it <= cores }.distinct()
+    val jobs = mutableListOf<BenchJob>()
+
+    fun stageDims(
+        label: String,
+        readers: Int,
+        workers: Int,
+        writers: Int,
+    ) = listOf(
+        "scenario" to "stages",
+        "label" to label,
+        "kernel" to "io",
+        "mode" to "n/a",
+        "readers" to readers.toString(),
+        "workers" to workers.toString(),
+        "writers" to writers.toString(),
+        "buffer" to "1",
+        "conv_threads" to "1",
+        "dataset_mp" to mp,
+    )
+
+    // -- Stage budget: what each pipeline stage costs on its own --
+    jobs.add(
+        BenchJob(
+            dims = stageDims("read+decode dataset", readers = 1, workers = 1, writers = 0),
+            warmup = { files.forEach { readImage(it.absolutePath) } },
+            measure = {
+                val t0 = System.nanoTime()
+                files.forEach { readImage(it.absolutePath) }
+                System.nanoTime() - t0
+            },
+        ),
+    )
+    val loaded = files.map { readImage(it.absolutePath) to "convolved_" + it.name }
+    jobs.add(
+        BenchJob(
+            dims = stageDims("encode+write dataset", readers = 0, workers = 1, writers = 1),
+            warmup = { loaded.forEach { writeImage(it.first, File(outputDir, it.second).path) } },
+            measure = {
+                val t0 = System.nanoTime()
+                loaded.forEach { writeImage(it.first, File(outputDir, it.second).path) }
+                System.nanoTime() - t0
+            },
+        ),
+    )
+
+    // -- Scenarios 1/2: worker sweeps for the heavy and light kernels --
+    for (w in workerCounts) {
+        jobs.add(passJob("workers_heavy", "workers=$w", "heavy_15x15", HEAVY_KERNEL, Mode.SERIAL, PipelineConfig(numWorkers = w)))
+        jobs.add(passJob("workers_light", "workers=$w", "light_3x3", BLUR, Mode.SERIAL, PipelineConfig(numWorkers = w)))
+    }
+
+    // -- Scenario 3: escaping the I/O bound: scale readers/writers --
+    jobs.add(
+        passJob(
+            "io_scaling",
+            "light ${cores}w 2r/2w",
+            "light_3x3",
+            BLUR,
+            Mode.SERIAL,
+            PipelineConfig(numReaders = 2, numWorkers = cores, numWriters = 2),
+        ),
+    )
+    jobs.add(
+        passJob(
+            "io_scaling",
+            "light ${cores}w 3r/3w",
+            "light_3x3",
+            BLUR,
+            Mode.SERIAL,
+            PipelineConfig(numReaders = 3, numWorkers = cores, numWriters = 3),
+        ),
+    )
+    jobs.add(
+        passJob(
+            "io_scaling",
+            "heavy ${cores}w 2r/2w",
+            "heavy_15x15",
+            HEAVY_KERNEL,
+            Mode.SERIAL,
+            PipelineConfig(numReaders = 2, numWorkers = cores, numWriters = 2),
+        ),
+    )
+
+    // -- Scenario 4: nested per-image parallelism vs cross-image only --
+    jobs.add(
+        passJob(
+            "nested",
+            "1w ROWS t=$cores (nested)",
+            "heavy_15x15",
+            HEAVY_KERNEL,
+            Mode.ROWS,
+            PipelineConfig(numWorkers = 1, convThreads = cores),
+        ),
+    )
+    jobs.add(
+        passJob(
+            "nested",
+            "4w ROWS t=4 (private pools)",
+            "heavy_15x15",
+            HEAVY_KERNEL,
+            Mode.ROWS,
+            PipelineConfig(numWorkers = 4, convThreads = 4),
+        ),
+    )
+    jobs.add(
+        passJob(
+            "nested",
+            "${cores}w ROWS t=$cores (shared pool)",
+            "heavy_15x15",
+            HEAVY_KERNEL,
+            Mode.ROWS,
+            PipelineConfig(numWorkers = cores, convThreads = cores),
+        ),
+    )
+
+    // -- Scenario 5: channel buffer size --
+    for (buf in listOf(1, 2, 4, 8, 16, 32)) {
+        jobs.add(
+            passJob(
+                "buffer",
+                "heavy ${cores}w buf=$buf",
+                "heavy_15x15",
+                HEAVY_KERNEL,
+                Mode.SERIAL,
+                PipelineConfig(numWorkers = cores, bufferSize = buf),
+            ),
+        )
+        jobs.add(
+            passJob(
+                "buffer",
+                "light ${cores}w buf=$buf",
+                "light_3x3",
+                BLUR,
+                Mode.SERIAL,
+                PipelineConfig(numWorkers = cores, bufferSize = buf),
+            ),
+        )
+    }
+
+    val csv =
+        CsvSink(
+            File(args.outDir, "benchmark_task3.csv"),
+            listOf("scenario", "label", "kernel", "mode", "readers", "workers", "writers", "buffer", "conv_threads", "dataset_mp"),
+        )
+    runMatrix(jobs, args.reps, args.seed, csv)
+    writeRunMeta(args.outDir, args)
+    shutdownConvolutionPools()
+    println("Raw data -> ${File(args.outDir, "benchmark_task3.csv").absolutePath}")
+}
+
 fun main(args: Array<String>) {
     val workDir = Paths.get("").toAbsolutePath()
     val resourcesDir =
@@ -187,11 +430,18 @@ fun main(args: Array<String>) {
     val docsDir = File(repoRoot(), "docs").also { it.mkdirs() }
 
     val taskToken = args.firstOrNull()?.takeIf { !it.startsWith("--") } ?: "serial"
-    val parsed = parseBenchArgs(args, defaultReps = if (taskToken == "parallel") 9 else 7, fallbackOut = docsDir)
+    val defaultReps =
+        when (taskToken) {
+            "parallel" -> 9
+            "pipeline" -> 5
+            else -> 7
+        }
+    val parsed = parseBenchArgs(args, defaultReps = defaultReps, fallbackOut = docsDir)
 
     when (parsed.task) {
         "serial" -> runSerialBenchmark(resourcesDir, parsed)
         "parallel" -> runParallelBenchmark(resourcesDir, parsed)
-        else -> error("Unknown benchmark task: '${parsed.task}'. Available: serial, parallel")
+        "pipeline" -> runPipelineBenchmark(resourcesDir, parsed)
+        else -> error("Unknown benchmark task: '${parsed.task}'. Available: serial, parallel, pipeline")
     }
 }

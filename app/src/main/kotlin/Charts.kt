@@ -383,6 +383,112 @@ private fun saveTask2Charts(
     println("Task 2 charts -> ${chartsDir.absolutePath}")
 }
 
+// ---------------------------------------------------------------------------
+// Task 3
+// ---------------------------------------------------------------------------
+
+private fun cfgLabel(c: Config): String = "${c.dim("scenario")}: ${c.dim("label")}"
+
+private fun saveTask3Charts(
+    configs: Collection<Config>,
+    chartsDir: File,
+) {
+    if (configs.isEmpty()) return
+    val cores = Runtime.getRuntime().availableProcessors()
+
+    // 1. Pass time vs workers for both kernels + ideal line (heavy baseline/w).
+    val heavy = configs.filter { it.dim("scenario") == "workers_heavy" }.sortedBy { it.dim("workers").toInt() }
+    val light = configs.filter { it.dim("scenario") == "workers_light" }.sortedBy { it.dim("workers").toInt() }
+    val chart1 =
+        baseXY(
+            "Task 3: dataset pass time vs pipeline workers (median, 95% CI)",
+            "convolution workers (= dedicated OS threads)",
+            "pass, ms (log)",
+            logX = false,
+            logY = true,
+        )
+    if (heavy.isNotEmpty()) {
+        chart1.addSeries(
+            "heavy 15x15 [CI]",
+            heavy.map { it.dim("workers").toDouble() }.toDoubleArray(),
+            heavy.map { Stats.median(it.samples) / 1e6 }.toDoubleArray(),
+            heavy.map { ciHalfWidthNs(it.samples) / 1e6 }.toDoubleArray(),
+        )
+        val base = Stats.median(heavy.first { it.dim("workers").toInt() == 1 }.samples)
+        chart1.addSeries(
+            "ideal (heavy/threads)",
+            heavy.map { it.dim("workers").toDouble() }.toDoubleArray(),
+            heavy.map { base / it.dim("workers").toInt() / 1e6 }.toDoubleArray(),
+        )
+    }
+    if (light.isNotEmpty()) {
+        chart1.addSeries(
+            "light 3x3 [CI]",
+            light.map { it.dim("workers").toDouble() }.toDoubleArray(),
+            light.map { Stats.median(it.samples) / 1e6 }.toDoubleArray(),
+            light.map { ciHalfWidthNs(it.samples) / 1e6 }.toDoubleArray(),
+        )
+    }
+    save(chart1, File(chartsDir, "task3_scaling_vs_workers.png"))
+
+    // 2. I/O budget: stage costs vs the light-kernel plateau + IO scaling.
+    val chart2 =
+        BoxChartBuilder()
+            .width(1250).height(700)
+            .theme(Styler.ChartTheme.XChart)
+            .title("Task 3: stage budget and escaping the I/O bound (ms per pass/stage)")
+            .xAxisTitle("configuration")
+            .yAxisTitle("ms")
+            .build()
+    chart2.styler.setLegendPosition(Styler.LegendPosition.OutsideS)
+    chart2.styler.setXAxisLabelRotation(45)
+    for (c in configs.filter {
+        it.dim("scenario") in setOf("stages", "io_scaling") || (it.dim("scenario") == "workers_light" && it.dim("workers") == "$cores")
+    }) {
+        chart2.addSeries(cfgLabel(c), numbers(c.samples.map { it / 1e6 }))
+    }
+    save(chart2, File(chartsDir, "task3_io_stages.png"))
+
+    // 3. Nested vs cross-image parallelism (heavy): distributions per config.
+    val chart3 =
+        BoxChartBuilder()
+            .width(1250).height(700)
+            .theme(Styler.ChartTheme.XChart)
+            .title("Task 3: nested per-image parallelism vs cross-image workers (heavy)")
+            .xAxisTitle("configuration")
+            .yAxisTitle("pass, ms")
+            .build()
+    chart3.styler.setLegendPosition(Styler.LegendPosition.OutsideS)
+    chart3.styler.setXAxisLabelRotation(45)
+    for (c in configs.filter {
+        it.dim("scenario") == "nested" || (it.dim("scenario") == "workers_heavy" && it.dim("workers") in setOf("1", "$cores"))
+    }) {
+        chart3.addSeries(cfgLabel(c), numbers(c.samples.map { it / 1e6 }))
+    }
+    save(chart3, File(chartsDir, "task3_nested_vs_cross.png"))
+
+    // 4. Buffer-size sweep for both kernels.
+    val chart4 =
+        baseXY(
+            "Task 3: channel buffer size effect ($cores workers; median, 95% CI)",
+            "buffer size (slots per stage channel)",
+            "pass, ms (log)",
+            logX = false,
+            logY = true,
+        )
+    for ((k, label) in listOf("heavy_15x15" to "heavy 15x15", "light_3x3" to "light 3x3")) {
+        val rs = configs.filter { it.dim("scenario") == "buffer" && it.dim("kernel") == k }.sortedBy { it.dim("buffer").toInt() }
+        chart4.addSeries(
+            label,
+            rs.map { it.dim("buffer").toDouble() }.toDoubleArray(),
+            rs.map { Stats.median(it.samples) / 1e6 }.toDoubleArray(),
+            rs.map { ciHalfWidthNs(it.samples) / 1e6 }.toDoubleArray(),
+        )
+    }
+    save(chart4, File(chartsDir, "task3_buffer.png"))
+    println("Task 3 charts -> ${chartsDir.absolutePath}")
+}
+
 fun main(args: Array<String>) {
     val repoRoot = repoRoot()
 
@@ -418,6 +524,22 @@ fun main(args: Array<String>) {
         repeatability(t2.values, "task2", docsDir, chartsDir) { c ->
             val isFocus = c.dim("pixels").toLong() == focusPixels && c.dim("taps").toInt() == focusTaps
             isFocus && (c.dim("strategy") == "serial" || c.dim("threads") in focusThreads)
+        }
+    }
+
+    val t3 = collectConfigs(runDirs, "benchmark_task3.csv")
+    if (t3.isNotEmpty()) {
+        writeStats(t3.values, File(docsDir, "benchmark_stats_task3.csv"))
+        saveTask3Charts(t3.values, chartsDir)
+        val cores = Runtime.getRuntime().availableProcessors()
+        repeatability(t3.values, "task3", docsDir, chartsDir) { c ->
+            when {
+                c.dim("scenario") == "nested" -> true
+                c.dim("scenario") == "workers_heavy" -> c.dim("workers") == "$cores"
+                c.dim("scenario") == "workers_light" -> c.dim("workers") == "$cores"
+                c.dim("scenario") == "io_scaling" -> true
+                else -> false
+            }
         }
     }
 }
