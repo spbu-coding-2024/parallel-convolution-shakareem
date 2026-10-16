@@ -27,11 +27,9 @@ Accumulation order per pixel is identical to the naive formulation, so results a
 bit-for-bit equal and the serial implementation stays a valid reference for the
 parallel ones (checked in tests).
 
-Measured single-core throughput: **~2.4 Gtap/s ≈ 4.8 GFLOPS** (blur 15×15 on man.bmp:
-96.8 ms for 1.05 Mpx × 225 taps). The previous implementation of the same math — modulo
-wrap-around and reflected-kernel indexing recomputed inside the inner loop — measured
-363 ms for blur 11×11 on man.bmp on this machine; the optimized core does it in 52 ms
-(**~7×**), so all later speedups measure parallelism, not implementation waste.
+Measured single-core throughput: **~2.4 Gtap/s ≈ 4.9 GFLOPS** (blur 15×15 on man.bmp:
+97.0 ms for 1.05 Mpx × 225 taps). This is the per-thread ceiling that Task 2's
+thread-scaling measurements are compared against.
 
 ## Benchmark design — minimizing OS noise
 
@@ -51,8 +49,9 @@ irrelevant, each measured configuration must do enough useful work:
 
 The spread chart shows the design working: 3×3 kernels on small images still have
 tens–hundreds of percent relative spread (they are *not* used for scaling conclusions —
-they only take ~1 ms of useful work), while every heavy configuration (≥ 50 ms of work)
-settles at < 3% and the 1024²+15×15 / 1920×1080+15×15 cases at ~1%.
+they only take ~1 ms of useful work), while every configuration doing ≥ 50 ms of work
+varies by < 4%, and the two heaviest ones (1024² and 1920×1080 with the 15×15 kernel)
+by ~2% and ~0.5%.
 
 ## Raw Results
 
@@ -61,22 +60,22 @@ runs are not quantization artifacts.
 
 | Image | Size | Kernel | Avg (ms) | Min (ms) | Max (ms) |
 |-------|------|--------|----------|----------|----------|
-| cameraman | 256×256 | blur 3×3 | 1.02 | 0.59 | 1.73 |
-| cameraman | 256×256 | edge 3×3 | 0.93 | 0.56 | 2.26 |
-| cameraman | 256×256 | blur 11×11 | 3.83 | 3.72 | 4.08 |
-| cameraman | 256×256 | blur 15×15 | 7.04 | 6.98 | 7.12 |
-| lenna | 512×512 | blur 3×3 | 2.69 | 1.83 | 5.58 |
-| lenna | 512×512 | edge 3×3 | 1.80 | 1.79 | 1.81 |
-| lenna | 512×512 | blur 11×11 | 14.05 | 13.55 | 15.87 |
-| lenna | 512×512 | blur 15×15 | 25.74 | 25.69 | 25.76 |
-| man | 1024×1024 | blur 3×3 | 7.93 | 7.25 | 10.38 |
-| man | 1024×1024 | edge 3×3 | 7.80 | 7.26 | 9.91 |
-| man | 1024×1024 | blur 11×11 | 52.11 | 51.88 | 52.33 |
-| man | 1024×1024 | blur 15×15 | 96.33 | 95.28 | 97.44 |
-| Rainier | 1920×1080 | blur 3×3 | 15.30 | 14.37 | 18.42 |
-| Rainier | 1920×1080 | edge 3×3 | 15.30 | 14.48 | 17.62 |
-| Rainier | 1920×1080 | blur 11×11 | 101.76 | 101.03 | 103.51 |
-| Rainier | 1920×1080 | blur 15×15 | 185.96 | 184.25 | 186.56 |
+| cameraman | 256×256 | blur 3×3 | 1.30 | 0.85 | 2.38 |
+| cameraman | 256×256 | edge 3×3 | 1.07 | 0.84 | 1.96 |
+| cameraman | 256×256 | blur 11×11 | 3.83 | 3.71 | 4.05 |
+| cameraman | 256×256 | blur 15×15 | 7.10 | 7.03 | 7.27 |
+| lenna | 512×512 | blur 3×3 | 2.63 | 1.85 | 5.16 |
+| lenna | 512×512 | edge 3×3 | 1.79 | 1.77 | 1.80 |
+| lenna | 512×512 | blur 11×11 | 13.98 | 13.55 | 15.36 |
+| lenna | 512×512 | blur 15×15 | 25.36 | 25.33 | 25.41 |
+| man | 1024×1024 | blur 3×3 | 7.93 | 7.23 | 9.09 |
+| man | 1024×1024 | edge 3×3 | 7.54 | 7.14 | 8.59 |
+| man | 1024×1024 | blur 11×11 | 52.51 | 51.89 | 53.96 |
+| man | 1024×1024 | blur 15×15 | 97.02 | 96.60 | 98.25 |
+| Rainier | 1920×1080 | blur 3×3 | 15.02 | 14.54 | 15.99 |
+| Rainier | 1920×1080 | edge 3×3 | 14.77 | 14.32 | 16.04 |
+| Rainier | 1920×1080 | blur 11×11 | 103.13 | 102.02 | 105.64 |
+| Rainier | 1920×1080 | blur 15×15 | 186.61 | 186.21 | 187.06 |
 
 Full data: [`docs/benchmark_task1.csv`](../docs/benchmark_task1.csv)
 (charts are regenerated from this table by the benchmark itself into `docs/charts/`).
@@ -94,8 +93,9 @@ Straight lines on log-log axes: time grows linearly with pixel count for every k
 
 ![ns per pixel per tap](../docs/charts/task1_ns_per_tap.png)
 
-Time per (pixel × tap) is ~0.4–1.1 ns and drops for larger kernels: one tap costs the
-same everywhere, only the small-kernel cases pay the fixed per-pixel loop overhead.
+Time per (pixel × tap) collapses to a stable ~0.4 ns for all kernels from 11×11 up,
+while the 3×3 cases pay 0.8–2.2 ns: one tap costs the same everywhere, only the
+small-kernel runs are dominated by the fixed per-pixel loop overhead.
 This is the evidence that the hot loop is running at constant hardware throughput
 (~2.4 Gtap/s single-core), i.e. measurements above are throughput, not noise.
 
@@ -114,5 +114,5 @@ Downside: introduces a discontinuity at image edges for natural images (visible 
 The serial implementation serves as the **reference** for all parallel strategies:
 any parallel result must match it bit-for-bit (tested). Its ~2.4 Gtap/s per core sets the
 expected ceiling for Task 2 on the 14-core Ultra 5 225H; the Task 2 benchmark therefore
-sweeps the number of OS threads the convolution may use (1…14) instead of the coroutine
-count, and measures how close chunked parallelism gets to `threads × serial`.
+sweeps the number of OS threads the convolution may use (1…14) and measures how close
+chunked parallelism gets to `threads × serial`.
