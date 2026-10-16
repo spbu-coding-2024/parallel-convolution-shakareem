@@ -128,3 +128,33 @@ private fun convolvePixelWrapped(
     }
     return sum
 }
+
+/**
+ * Naive reference implementation for one pixel (raw kernel, modulo wrap-around).
+ * Only used by the educational one-coroutine-per-pixel strategy (Task 2.1.1);
+ * the optimized paths use `convolveRegion`. Bit-for-bit equal to it by
+ * construction (same accumulation order).
+ */
+fun convolvePixel(
+    image: Bitmap,
+    kernel: Bitmap,
+    y: Int,
+    x: Int,
+): Double {
+    val imageHeight = image.size
+    val imageWidth = image[0].size
+    val kernelHeight = kernel.size
+    val kernelWidth = kernel[0].size
+
+    var sum = 0.0
+    for (ky in 0 until kernelHeight) {
+        for (kx in 0 until kernelWidth) {
+            val imageY = (y - kernelHeight / 2 + ky + imageHeight) % imageHeight
+            val imageX = (x - kernelWidth / 2 + kx + imageWidth) % imageWidth
+
+            // use reflected kernel (classical discrete convolution, not correlation)
+            sum += kernel[kernelHeight - 1 - ky][kernelWidth - 1 - kx] * image[imageY][imageX]
+        }
+    }
+    return sum
+}
