@@ -37,6 +37,16 @@ tasks.register("fmt") {
 
 tasks.test {
     useJUnitPlatform()
+    // Deterministic AWT behavior regardless of the shell's DISPLAY (XChart/ImageIO
+    // must not try to open an X11 connection; Wayland sessions often export a
+    // DISPLAY that has no X authority).
+    systemProperty("java.awt.headless", "true")
+}
+
+tasks.withType<JavaExec> {
+    // Benchmark saves chart PNGs via XChart/AWT; run reads/writes images via ImageIO.
+    // Headless mode renders offscreen without needing an X11/Wayland connection.
+    systemProperty("java.awt.headless", "true")
 }
 
 tasks.register<JavaExec>("benchmark") {
