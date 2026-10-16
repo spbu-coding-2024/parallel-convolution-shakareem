@@ -7,7 +7,8 @@ A command-line tool for applying 2D convolution filters to grayscale images.
 - **Boundary conditions**: wrap-around (cyclic padding) — pixels outside the image are taken from the opposite edge
 - **Kernel convention**: classical discrete convolution (kernel is reflected), not correlation
 - **Pixel values**: not clamped during computation — only clamped to `[0, 255]` on write, preserving mathematical correctness for filter composition
-- **Image I/O**: `javax.imageio` (standard JDK), grayscale via luminance formula `0.299·R + 0.587·G + 0.114·B`
+- **Image I/O**: `javax.imageio` (standard JDK), grayscale via luminance formula `0.299·R + 0.587·G + 0.114·B`, bulk per-row pixel transfer
+- **Inner loop**: kernel reflection hoisted, wrap-around (`%`) confined to border pixels, row references hoisted — ~2.4 Gtap/s ≈ 4.8 GFLOPS on one core
 
 ## Available Filters
 
@@ -43,10 +44,12 @@ A command-line tool for applying 2D convolution filters to grayscale images.
 ## Benchmarking
 
 ```bash
-./gradlew benchmark
+./gradlew benchmark -Ptask=serial
 ```
 
-Results are saved to `docs/benchmark_task1.csv`.
+Results are saved to `docs/benchmark_task1.csv`; charts are regenerated from the
+results table into `docs/charts/` (`task1_scaling.png`, `task1_ns_per_tap.png`,
+`task1_run_spread.png`).
 
 ## Performance Analysis
 
