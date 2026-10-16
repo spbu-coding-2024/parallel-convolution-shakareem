@@ -1,6 +1,12 @@
+import convolution.autoGridConvolve
+import convolution.columnsConvolve
+import convolution.defaultThreads
+import convolution.rowsConvolve
 import convolution.serialConvolve
+import convolution.shutdownConvolutionPools
 import images.Bitmap
 import images.readImage
+import kotlinx.coroutines.runBlocking
 import java.io.File
 import java.nio.file.Paths
 
@@ -93,6 +99,81 @@ fun runSerialBenchmark(
     println("Draw charts with: ./gradlew charts -Psrc=${args.outDir.invariantSeparatorsPath}")
 }
 
+fun runParallelBenchmark(
+    resourcesDir: File,
+    args: BenchArgs,
+) {
+    // The experiment: convolution speed as a function of the number of OS
+    // threads it may use. Strategies do not differ in coroutine count — every
+    // strategy launches exactly `threads` coroutines on a fixed pool of
+    // `threads` OS threads; only the tile shape changes.
+    //
+    // Thread counts for a 14-physical-core chip (Ultra 5 225H, no SMT):
+    //   1, 2, 4, 7, 8, 12, 14   -> scaling curve, 14 = all physical cores
+    //   28                       -> 2x oversubscription control point
+    val cores = defaultThreads
+    val threadCounts = listOf(1, 2, 4, 7, 8, 12, 14, 28).filter { it <= 2 * cores }.distinct()
+    // 11x11 and 15x15 keep even the t=28 runs above the noise floor; the
+    // 21x21 kernel is exercised in Task 1 only (time budget of this matrix).
+    val images = loadBenchImages(resourcesDir)
+    val kernels = BENCH_KERNELS.take(2)
+
+    val strategies: List<Pair<String, (Bitmap, Bitmap, Int) -> Unit>> =
+        listOf(
+            "rows" to { img, k, t -> runBlocking { rowsConvolve(img, k, t) } },
+            "columns" to { img, k, t -> runBlocking { columnsConvolve(img, k, t) } },
+            "autoGrid" to { img, k, t -> runBlocking { autoGridConvolve(img, k, t) } },
+        )
+
+    println("=== Task 2: Parallel Convolution — OS Thread Scaling ===")
+    println("CPU cores: $cores | thread sweep: $threadCounts | reps: ${args.reps} (interleaved, raw ns)\n")
+
+    val jobs =
+        images.flatMap { (imageName, image) ->
+            val pixels = image.size.toLong() * image[0].size
+            kernels.flatMap { (kernelName, kernel, taps) ->
+                buildList {
+                    add(
+                        BenchJob(
+                            dims = dimsOf("serial", 1, imageName, pixels, kernelName, taps),
+                            warmup = { serialConvolve(image, kernel) },
+                            measure = {
+                                val t0 = System.nanoTime()
+                                serialConvolve(image, kernel)
+                                System.nanoTime() - t0
+                            },
+                        ),
+                    )
+                    for ((sName, invoke) in strategies) {
+                        for (t in threadCounts) {
+                            add(
+                                BenchJob(
+                                    dims = dimsOf(sName, t, imageName, pixels, kernelName, taps),
+                                    warmup = { invoke(image, kernel, t) },
+                                    measure = {
+                                        val t0 = System.nanoTime()
+                                        invoke(image, kernel, t)
+                                        System.nanoTime() - t0
+                                    },
+                                ),
+                            )
+                        }
+                    }
+                }
+            }
+        }
+
+    val csv =
+        CsvSink(
+            File(args.outDir, "benchmark_task2.csv"),
+            listOf("strategy", "threads", "image", "pixels", "kernel", "taps"),
+        )
+    runMatrix(jobs, args.reps, args.seed, csv)
+    writeRunMeta(args.outDir, args)
+    shutdownConvolutionPools()
+    println("Raw data -> ${File(args.outDir, "benchmark_task2.csv").absolutePath}")
+}
+
 fun main(args: Array<String>) {
     val workDir = Paths.get("").toAbsolutePath()
     val resourcesDir =
@@ -105,10 +186,12 @@ fun main(args: Array<String>) {
 
     val docsDir = File(repoRoot(), "docs").also { it.mkdirs() }
 
-    val parsed = parseBenchArgs(args, defaultReps = 7, fallbackOut = docsDir)
+    val taskToken = args.firstOrNull()?.takeIf { !it.startsWith("--") } ?: "serial"
+    val parsed = parseBenchArgs(args, defaultReps = if (taskToken == "parallel") 9 else 7, fallbackOut = docsDir)
 
     when (parsed.task) {
         "serial" -> runSerialBenchmark(resourcesDir, parsed)
-        else -> error("Unknown benchmark task: '${parsed.task}'. Available: serial")
+        "parallel" -> runParallelBenchmark(resourcesDir, parsed)
+        else -> error("Unknown benchmark task: '${parsed.task}'. Available: serial, parallel")
     }
 }
