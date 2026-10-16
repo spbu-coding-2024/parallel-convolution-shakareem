@@ -1,0 +1,31 @@
+config,n_dirs,pooled_median_ms,max_deviation_pct
+"buffer/heavy 12w buf=1/heavy_15x15/SERIAL/1/12/1/1/12/13.839204",3,1505.982,0.20
+"buffer/heavy 12w buf=16/heavy_15x15/SERIAL/1/12/1/16/12/13.839204",3,1098.470,0.17
+"buffer/heavy 12w buf=2/heavy_15x15/SERIAL/1/12/1/2/12/13.839204",3,1098.803,0.40
+"buffer/heavy 12w buf=32/heavy_15x15/SERIAL/1/12/1/32/12/13.839204",3,1102.024,0.42
+"buffer/heavy 12w buf=4/heavy_15x15/SERIAL/1/12/1/4/12/13.839204",3,1109.418,0.60
+"buffer/heavy 12w buf=8/heavy_15x15/SERIAL/1/12/1/8/12/13.839204",3,1100.858,0.56
+"buffer/light 12w buf=1/light_3x3/SERIAL/1/12/1/1/12/13.839204",3,323.502,1.61
+"buffer/light 12w buf=16/light_3x3/SERIAL/1/12/1/16/12/13.839204",3,251.945,1.49
+"buffer/light 12w buf=2/light_3x3/SERIAL/1/12/1/2/12/13.839204",3,257.871,0.06
+"buffer/light 12w buf=32/light_3x3/SERIAL/1/12/1/32/12/13.839204",3,242.405,0.84
+"buffer/light 12w buf=4/light_3x3/SERIAL/1/12/1/4/12/13.839204",3,247.768,0.29
+"buffer/light 12w buf=8/light_3x3/SERIAL/1/12/1/8/12/13.839204",3,244.467,2.40
+"io_scaling/heavy 12w 2r/2w/heavy_15x15/SERIAL/2/12/2/8/12/13.839204",3,1103.229,0.41
+"io_scaling/light 12w 2r/2w/light_3x3/SERIAL/2/12/2/8/12/13.839204",3,226.671,2.96
+"io_scaling/light 12w 3r/3w/light_3x3/SERIAL/3/12/3/8/12/13.839204",3,223.816,1.20
+"nested/12w ROWS t=12 (shared pool)/heavy_15x15/ROWS/1/12/1/8/12/13.839204",3,345.926,0.88
+"nested/1w ROWS t=12 (nested)/heavy_15x15/ROWS/1/1/1/8/12/13.839204",3,413.765,1.49
+"nested/4w ROWS t=4 (private pools)/heavy_15x15/ROWS/1/4/1/8/4/13.839204",3,743.383,0.62
+"stages/encode+write dataset/io/n/a/0/1/1/1/1/13.839204",3,59.112,0.80
+"stages/read+decode dataset/io/n/a/1/1/0/1/1/13.839204",3,209.148,0.84
+"workers_heavy/workers=1/heavy_15x15/SERIAL/1/1/1/8/12/13.839204",3,2556.219,0.12
+"workers_heavy/workers=12/heavy_15x15/SERIAL/1/12/1/8/12/13.839204",3,1100.423,0.05
+"workers_heavy/workers=2/heavy_15x15/SERIAL/1/2/1/8/12/13.839204",3,1446.325,0.19
+"workers_heavy/workers=4/heavy_15x15/SERIAL/1/4/1/8/12/13.839204",3,1096.617,0.26
+"workers_heavy/workers=8/heavy_15x15/SERIAL/1/8/1/8/12/13.839204",3,1103.339,0.38
+"workers_light/workers=1/light_3x3/SERIAL/1/1/1/8/12/13.839204",3,333.481,1.07
+"workers_light/workers=12/light_3x3/SERIAL/1/12/1/8/12/13.839204",3,241.413,1.47
+"workers_light/workers=2/light_3x3/SERIAL/1/2/1/8/12/13.839204",3,252.840,1.78
+"workers_light/workers=4/light_3x3/SERIAL/1/4/1/8/12/13.839204",3,242.973,1.69
+"workers_light/workers=8/light_3x3/SERIAL/1/8/1/8/12/13.839204",3,245.178,2.18

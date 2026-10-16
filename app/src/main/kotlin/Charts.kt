@@ -35,7 +35,10 @@ private fun parseCsv(
     require(lines.size > 1) { "empty csv $file" }
     val header = lines[0].split(",")
     val nsIdx = header.indexOf("ns").also { require(it >= 0) { "no ns column in $file" } }
-    val dimCols = header.withIndex().filter { it.value !in listOf("ns", "rep") }
+    // A pooled export may carry a `round` column: it is the reproducibility
+    // grouping key (like a run directory), not a configuration dimension.
+    val roundIdx = header.indexOf("round")
+    val dimCols = header.withIndex().filter { it.value !in listOf("ns", "rep", "round") }
     for (line in lines.drop(1)) {
         val cells = line.split(",")
         val dims = dimCols.map { (i, n) -> n to cells[i] }
@@ -43,7 +46,8 @@ private fun parseCsv(
         val cfg = into.getOrPut(key) { Config(dims) }
         val ns = cells[nsIdx].toLong()
         cfg.samples.add(ns)
-        cfg.byDir.getOrPut(dirName) { mutableListOf() }.add(ns)
+        val group = if (roundIdx >= 0) "round${cells[roundIdx]}" else dirName
+        cfg.byDir.getOrPut(group) { mutableListOf() }.add(ns)
     }
 }
 

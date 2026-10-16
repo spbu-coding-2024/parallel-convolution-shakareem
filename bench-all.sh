@@ -80,6 +80,15 @@ done
 ROOT=0
 if [[ $EUID == 0 ]] || sudo -n true 2>/dev/null; then ROOT=1; fi
 
+# gradle must always run as the HUMAN user, even under `sudo ./bench-all.sh`:
+# otherwise build outputs and the gradle daemon end up root-owned
+GRADLE_RUN=()
+if [[ $EUID == 0 && -n "${SUDO_USER:-}" && "${SUDO_USER}" != "root" ]]; then
+  UHOME=$(getent passwd "$SUDO_USER" | cut -d: -f6)
+  GRADLE_RUN=(sudo -n -u "$SUDO_USER" env "HOME=$UHOME" "USER=$SUDO_USER")
+fi
+g() { ${GRADLE_RUN[@]+"${GRADLE_RUN[@]}"} "$@"; }
+
 echo "=== bench-all.sh ==="
 echo "bench cpus   : $BENCH_CPUS      housekeeping: ${HK[*]:-<none>}"
 echo "rounds       : $ROUNDS          tasks: $TASKS"
@@ -116,7 +125,7 @@ restore() {
     rm -f "$OLD_IRQ_FILE"
     if [[ $IRQBALANCE_WAS_ACTIVE == 1 ]]; then systemctl start irqbalance 2>/dev/null || true; fi
   fi
-  ./gradlew --stop >/dev/null 2>&1 || true
+  g ./gradlew --stop >/dev/null 2>&1 || true
 }
 trap restore EXIT INT TERM
 
@@ -173,11 +182,13 @@ fi
 # JavaExec forks the measured JVM from the daemon, so pinning the daemon pins
 # every benchmark invocation.
 echo "== pre-compiling (not measured) =="
-./gradlew :app:assemble :app:compileTestKotlin -q >/dev/null
-./gradlew --stop >/dev/null 2>&1 || true
-pkill -f KotlinCompileDaemon 2>/dev/null || true
+g ./gradlew :app:assemble :app:compileTestKotlin -q >/dev/null
+g ./gradlew --stop >/dev/null 2>&1 || true
+pkill -u "$(id -un ${SUDO_USER:-karim})" -f KotlinCompileDaemon 2>/dev/null || true
 sleep 1
-taskset -c "$BENCH_CPUS" ./gradlew help -q >/dev/null
+# ONE gradle daemon, started inside the cpuset: the measured JavaExec JVMs are
+# forked by that daemon and inherit both its affinity and the user identity
+g taskset -c "$BENCH_CPUS" ./gradlew help -q >/dev/null
 
 STAMP=$(date +%Y%m%d-%H%M%S)
 BASE="docs/bench/$STAMP"
@@ -188,15 +199,15 @@ for r in $(seq 1 "$ROUNDS"); do
   for t in $TASKS; do
     echo ">>> round $r/$ROUNDS  task=$t  ->  $OUT"
     if [[ -n "$REPS" ]]; then
-      ./gradlew -q benchmark "-Ptask=$t" "-Pout=$OUT" "-Preps=$REPS"
+      g ./gradlew -q benchmark "-Ptask=$t" "-Pout=$OUT" "-Preps=$REPS"
     else
-      ./gradlew -q benchmark "-Ptask=$t" "-Pout=$OUT"
+      g ./gradlew -q benchmark "-Ptask=$t" "-Pout=$OUT"
     fi
   done
 done
 
 echo ">>> drawing charts + stats from all $ROUNDS rounds"
-./gradlew -q charts "-Psrc=$BASE"
+g ./gradlew -q charts "-Psrc=$BASE"
 
 echo
 echo "DONE."

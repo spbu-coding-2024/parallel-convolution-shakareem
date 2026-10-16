@@ -1,180 +1,183 @@
-# Task 3: Streaming Pipeline — Performance Analysis
+# Задача 3: потоковый конвейер над датасетом — анализ производительности
 
-## Setup
+## Условия и протокол
 
-- **Machine**: Intel Core Ultra 5 225H, **14 physical cores** (4P + 8E + 2LP-E), no SMT, CachyOS
-- **JVM**: Java 27 (OpenJDK), Kotlin coroutines
-- **Dataset**: 7 curated large images (`airplaneU2, brickwall, carpet, man, Rainier, textureA, textureB`), **8.4 MP total**
-- **Runs**: 1 warmup + 3 measured full-pass runs per configuration (a pass is one whole dataset; ≥ 0.1–0.8 s of work keeps OS noise small)
-- **Benchmark**: `./gradlew benchmark -Ptask=pipeline`
+- **Машина**: Intel Core Ultra 5 225H (4P + 8E + 2LP-E); эксперимент идёт на
+  ядрах **0–11** (P+E), LP-ядра 12–13 — housekeeping под прерываниями;
+  **все ядра заперты на 2.5 ГГц**, governor = performance
+  (протокол `bench-all.sh`, подробности — задача 1).
+- **JVM**: OpenJDK 27, Kotlin 2.4.21, корутины 1.11.0; `availableProcessors`
+  = 12 — это и есть «число доступных ОС-потоков» конвейера.
+- **Датасет**: 8 отобранных изображений (airplaneU2, brickwall, carpet, man,
+  Rainier, Maltese, textureA, textureB), **13.84 МП** суммарно, ~130 МП байт
+  пиксельных данных; тяжёлый проход на одном воркере ≈ 2.56 с.
+- **Замер**: 3 независимых запуска конвейера; в каждом — 1 разогрев + 5
+  чередующихся полных прохода датасета на конфигурацию → **15 сырых замеров в
+  наносекундах**; агрегаты — медиана ± bootstrap 95% CI
+  (`docs/benchmark_stats_task3.csv`), воспроизводимость —
+  `docs/benchmark_repeatability_task3.csv`.
+- **Данные**: [`docs/benchmark_task3.csv`](../docs/benchmark_task3.csv)
+  (длинный формат: строка = один проход).
 
-## Pipeline architecture
+## Архитектура конвейера
 
 ```
-┌────────────────┐  read ch    ┌──────────────────────┐  write ch   ┌────────────────┐
-│ readers × r    │ ─[buffer]──►│ workers × w          │ ─[buffer]──►│ writers × x    │
-│ Dispatchers.IO │             │ dedicated pool,      │             │ Dispatchers.IO │
-│ (file+decode)  │             │ w pinned OS threads  │             │ (encode+file)  │
-└────────────────┘             └──────────────────────┘             └────────────────┘
-        ▲                    Semaphore(2×buffer) bounds resident images around the whole circuit
+readers × r ──[buffer]──► workers × w ──[buffer]──► writers × x
+ (Dispatchers.IO)          (выделенный пул из       (Dispatchers.IO)
+                           ровно w ОС-потоков)
 ```
 
-Key points (continuing the Task 2 conclusions):
+- **Воркеры ≡ ОС-потоки**: `w` корутин на `newFixedThreadPoolContext(w)` —
+  экспериментальная ось одна, число потоков; лишних корутин на горячем пути нет.
+- **Свёртка внутри воркера по умолчанию SERIAL** — межкартиночного
+  параллелизма хватает, чтобы занять все ядра, без вложенных корутин.
+  Вложенные режимы (ROWS/COLUMNS/GRID) — опция, считают тайлами через общие
+  кэшированные пулы задачи 2; пул воркеров им не разделяют, поэтому
+  блокировка «воркер ждёт детей» deadlock-безопасна (тестируется).
+- **I/O никогда не занимает потоки свёртки** и наоборот — это разделение и
+  есть главное средство не уплыть в I/O-bound (требование задачи 3).
+- **Бэк-прессейр**: буферизованные каналы + семафор in-flight
+  (`2 × buffer` картинок) ограничивают резидентную память; быстрый ридер не
+  затопляет RAM, когда свёртка или запись отстают.
 
-- **Workers ≡ OS threads.** `w` coroutines on a `newFixedThreadPoolContext(w)` dispatcher — the
-  benchmark knob is the number of OS threads the convolution stage may use. No coroutine is
-  created per row/pixel anywhere on the hot path.
-- **Default convolution inside a worker is SERIAL** — cross-image parallelism already saturates
-  the CPUs; nested per-image coroutines are opt-in (`ROWS/COLUMNS/GRID` + `convThreads`) and are
-  measured below.
-- **I/O never blocks a compute thread and vice versa**: readers/writers live on `Dispatchers.IO`,
-  convolution on its dedicated pool; nested convolutions use the *separate* cached tile pools,
-  so a blocked worker can never deadlock its children.
-- **Backpressure**: buffered channels + an in-flight semaphore (`2 × buffer` images) cap memory;
-  a fast reader cannot flood memory when compute or write lags (Task 3.3).
+## Бюджет стадий (что и с чем надо перекрывать)
 
-## Stage budget (what must be overlapped)
+Замерено отдельно, в один поток, на прогретом page cache:
 
-Measured warm, single-threaded, outside the pipeline:
+| Стадия | Медиана, мс | CI |
+|--------|------------:|----:|
+| чтение + декод в grayscale (13.8 МП) | 209.1 | ±1.2 |
+| encode + запись BMP | 59.1 | ±0.5 |
+| тяжёлая свёртка 15×15 в 1 поток | ~2470 | — |
+| лёгкая свёртка 3×3 в 1 поток | ~97 | — |
 
-| Stage | Time per pass |
-|-------|---------------|
-| read + decode (grayscale) | 56.3 ms |
-| encode + write | 24.4 ms |
-| heavy conv (15×15, 8.4 MP, 1 thread) | ~790 ms |
-| light conv (3×3, 8.4 MP, 1 thread) | ~31 ms |
+Тяжёлое ядро: I/O — ~11% последовательного прохода, перекрывается легко.
+Лёгкое ядро: I/O **и есть** конвейер (268 мс против 97 мс арифметики).
 
-So: with the heavy kernel I/O is ~10% of one serial pass — trivially hideable.
-With the light kernel I/O **is** the pipeline (~81 ms vs 31 ms of convolution) — the
-compute stage is irrelevant and only I/O parallelism helps.
+## Сценарий 1: тяжёлое ядро — свип воркеров (SERIAL-свёртка в воркере)
 
-## Scenario 1: heavy kernel — workers sweep (SERIAL per worker)
+| workers | проход, мс | CI | ускорение | МП/с |
+|--------:|------------:|----:|----------:|-----:|
+| 1  | 2556.2 | ±3.6 | 1.00× | 5.4 |
+| 2  | 1446.3 | ±6.1 | 1.77× | 9.6 |
+| 4  | 1096.6 | ±3.2 | 2.33× | 12.6 |
+| 8  | 1103.3 | ±4.2 | 2.32× | 12.5 |
+| 12 | 1100.4 | ±5.9 | 2.32× | 12.6 |
 
-| workers | pass, ms | speedup | MP/s |
-|---------|----------|---------|------|
-| 1  | 796.1 | 1.00× | 10.5 |
-| 2  | 425.4 | 1.87× | 19.7 |
-| 4  | 260.9 | 3.05× | 32.1 |
-| 8  | 246.4 | 3.23× | 34.0 |
-| 12 | 240.2 | 3.31× | 34.8 |
-| 14 | 238.9 | **3.33×** | 35.1 |
+![Проход vs число воркеров](../docs/charts/task3_scaling_vs_workers.png)
 
-![Pass time vs workers](../docs/charts/task3_scaling_vs_workers.png)
+Плато с w≥4 — это **граница гранулярности**, и она считается арифметически:
+makespan не может быть меньше времени самой большой картинки. Для Maltese
+(5.47 МП) это 958 мс свёртки + её доля чтения/записи (82.7 + 23.4 мс) ≈
+**1064 мс** — измеренное плато 1100 ± 6 мс выше границы всего на 3.4%.
+Заметки: w=8 и w=12 идентичны статистически — при 8 картинках больше 8
+полезных воркеров почти нет; w=1 (2556 мс) равен сумме стадий (2470+9% I/O
+остатка) — сам конвейер не добавляет измеримых накладных расходов.
 
-Scaling stops at **3.3×, far below Task 2's 8.3×** — and this is not scheduling noise,
-it is **work granularity**: the dataset has only **7 images**, so at most 7 workers can
-ever be busy, and the pass makespan can never be shorter than the slowest single image
-(Rainier: ~185 ms serial) plus its I/O. The flat tail from w=8 on is all consistent with
-this bound: `makespan ≥ max(image time)`.
+## Сценарий 2: лёгкое ядро — стена из I/O
 
-The w=1 number (796 ms) matches Task 1 throughput exactly (8.4 MP × 225 taps /
-2.35 Gtap/s ≈ 800 ms), confirming the pipeline itself adds no measurable overhead.
+| workers | проход, мс | CI | ускорение |
+|--------:|------------:|----:|----------:|
+| 1  | 333.5 | ±3.6 | 1.00× |
+| 2  | 252.8 | ±4.5 | 1.32× |
+| 4  | 243.0 | ±4.1 | 1.37× |
+| 8  | 245.2 | ±5.0 | 1.36× |
+| 12 | 241.4 | ±3.6 | 1.38× |
 
-## Scenario 2: light kernel — the I/O wall
+CPU-мощность перестает платить, как только проход упирается в I/O-бюджет
+(~268 мс последовательно): плато ~243 мс с перекрывающимися CI для w=4…12.
+Это ровно та I/O-bound ловушка, от которой задача 3 требует убежать.
 
-| workers | pass, ms | speedup |
-|---------|----------|---------|
-| 1  | 113.7 | 1.00× |
-| 2  | 81.2  | 1.40× |
-| 4  | 78.9  | 1.44× |
-| 8  | 75.1  | 1.51× |
-| 12 | 71.9  | **1.58×** |
-| 14 | 82.6  | 1.38× |
+## Сценарий 3: побег от I/O — масштабирование читателей/писателей
 
-Adding CPU to the compute stage does nothing once pass time (~72–83 ms) approaches the
-serial I/O sum (~81 ms): the pipeline becomes I/O-bound, exactly the failure mode Task 3
-warns about (the w=14 number is within the run-to-run noise of the plateau — more workers
-than there are images buys nothing when images aren't the constraint).
+| конфигурация | проход, мс | CI | ускорение |
+|--------------|------------:|----:|----------:|
+| light 12w **2r/2w** | 226.7 | ±7.9 | 1.47× |
+| light 12w **3r/3w** | 223.8 | ±10.0 | 1.49× |
+| heavy 12w 2r/2w | 1103.2 | ±4.5 | 2.32× (без изменений) |
 
-## Scenario 3: escaping the I/O bound — scale the I/O stages
+![Бюджет стадий и побег от I/O-bound](../docs/charts/task3_io_stages.png)
 
-| configuration | pass, ms | speedup |
-|---------------|----------|---------|
-| light, 14w, 2r/2w | 70.1 | 1.62× |
-| light, 14w, **3r/3w** | **61.8** | **1.84×** |
-| heavy, 14w, 2r/2w | 239.2 | 3.33× (no change) |
+Пара доп. читателей/писателей снимает ещё ~15 мс (6–7% прохода): декод —
+CPU-работа, и две Decode-ветки делят 209 мс пополам, после чего узкое горло
+переезжает на запись и сам планинг конвейера. 3r/3w статистически не лучше
+2r/2w (CI перекрываются) — увеличивать дальше не за чем. Для тяжёлого ядра
+дополнительные читатели бесполезны в точности, как и предписано задачей 3.1:
+один ридер с буфером прячет свои 209 мс за 2.5 с арифметики.
 
-![I/O stages](../docs/charts/task3_io_stages.png)
+## Сценарий 4: вложенная потайловая свёртка против межкартиночной
 
-Splitting the I/O stages across parallel readers/writers recovers what CPU workers
-couldn't: 3 pairs bring the light pass to 61.8 ms (1.84×), pushing it below the
-single-reader stage sum — the decode work of 7 files is now genuinely concurrent
-(Task 3.3: the fast stage feeds the bottleneck one). With 2 pairs the effect is
-smaller (70.1 ms): 7 files split 2 ways leaves a lumpy tail.
-On the heavy kernel, extra readers change nothing (239.2 ≈ 238.9) — with buffer
-prefetch the single reader already hides its 56 ms behind 800 ms of compute
-(Task 3.1: one reader feeds many convolutions). This is the load-balancing answer
-of Task 3.3: **scale the stage that is the bottleneck, leave the others at 1**.
+Тяжёлое ядро:
 
-## Scenario 4: nested per-image parallelism (Task 3.2) vs cross-image only
+| конфигурация | проход, мс | CI | ускорение |
+|--------------|------------:|----:|----------:|
+| 1w, ROWS t=12 (одна картинка за раз) | 413.8 | ±6.2 | 6.18× |
+| 4w, ROWS t=4 (4 приватных пула по 4) | 743.4 | ±4.3 | 3.44× |
+| **12w, ROWS t=12 (общий пул тайлов)** | **345.9** | ±3.5 | **7.39×** |
+| 12w, SERIAL (ссылка, сценарий 1) | 1100.4 | ±5.9 | 2.32× |
 
-Heavy kernel, same dataset:
+![Вложенная vs межкартиночная параллельность](../docs/charts/task3_nested_vs_cross.png)
 
-| configuration | pass, ms | speedup |
-|---------------|----------|---------|
-| 1w, ROWS convolution t=14 (one image at a time) | 135.1 | 5.89× |
-| 4w, ROWS convolution t=4 (private pools)         | 249.3 | 3.19× |
-| **14w, ROWS convolution t=14 (shared tile pool)** | **112.4** | **7.08×** |
-| 14w, SERIAL (reference, Scenario 1)              | 236.8 | 3.36× |
+Победитель — **оба вида параллелизма сразу**, и он объясним до цифры:
+все вложенные тайловые задачи сидят на одном кэшированном 12-поточном пуле
+задач 2 с динамической раздачей, т.е. пул превращается в глобальную очередь
+тайлов поверх всех картинок. Граница makespan при этом — не самая большая
+картинка, а суммарная работа / совокупная производительность:
+2470 мс / 10.1× (замер задачи 2) ≈ 241 мс + остаток I/O ⇒ нижняя граница
+~300 мс; измерено **345.9 ± 3.5 мс** (в неё уже внесены свой вклад барьеры на
+границах картинок). Это 40 МП/с, в 3.2 раза быстрее лучшего межкартинного
+варианта.
 
-![Nested vs cross](../docs/charts/task3_nested_vs_cross.png)
+Порядок строк важнее magnitude: `4w × t=4` — 16 ОС-потоков свёртки на 12
+ядрах, но в четырёх приватных пулах без общей очереди — результат (743 мс)
+хуже и разделяемого пула, и почти не лучше 12w-SERIAL: дело не в «лишних
+потоках», а в отсутствии глобального балансировщика. `1w ROWS t=12` —
+правильный выбор, когда картинки обязаны обрабатываться строго по одной
+(жёсткий лимит памяти): 6.2× при одной резидентной картинке.
 
-The winner is surprising and worth spelling out: **cross-image *and* per-image
-parallelism together**. All nested tile tasks share one cached 14-thread convolution
-pool, and tiles are distributed dynamically (Task 2), so the pool becomes a *global*
-work queue across images: while 6 of the 7 images drain their small tiles, the
-remaining threads keep chipping away at Rainier's big tiles. The `max(image)`
-granularity bound from Scenario 1 disappears — 112.4 ms is close to the true
-compute bound (8.4 MP of tiles / ~21 Gtap/s effective ≈ 90 ms) plus a small tail.
+## Сценарий 5: размер буфера (бэк-прессейр)
 
-Note the ordering: naive oversubscription is **not** what makes this fast —
-`4w × t=4` (16 threads for 14 cores, four private half-size pools) is *worse than
-the serial-worker baseline* (249.3 vs 236.8 ms). What matters is one shared pool +
-dynamic tiles, so total busy OS threads stay at 14 and every thread always has work.
+| buffer | heavy 12w, мс | CI | light 12w, мс | CI |
+|-------:|--------------:|----:|--------------:|----:|
+| 1  | 1506.0 | ±9.0 | 323.5 | ±5.7 |
+| 2  | 1098.8 | ±5.8 | 257.9 | ±6.0 |
+| 4  | 1109.4 | ±5.3 | 247.8 | ±5.2 |
+| 8  | 1100.9 | ±5.7 | 244.5 | ±4.9 |
+| 16 | 1098.5 | ±5.5 | 251.9 | ±6.7 |
+| 32 | 1102.0 | ±5.4 | 242.4 | ±5.5 |
 
-The `1w ROWS t=14` row is the right choice when images must be processed strictly
-one at a time (e.g. memory-limited): 5.89× with at most one image in the compute
-stage.
+![Влияние размера буфера](../docs/charts/task3_buffer.png)
 
-## Scenario 5: buffer sizing (backpressure)
+`buffer=1` (две резидентные картинки) разворачивает стадии в последовательную
+цепочку: +37% к тяжёлому и +33% к лёгкому проходу. Колено — уже при buffer=2;
+дальше плато в пределах CI. Конструктивный предел памяти по дизайну:
+≤ `2 × buffer` картинок резидентно (для этого датасета при buffer=8 ≲ 0.5 ГБ)
+— быстрый читатель не может затопить память, когда свёртка или запись отстают.
 
-| buffer | heavy 14w, ms | light 14w, ms |
-|--------|---------------|---------------|
-| 1  | 497.1 | 126.9 |
-| 2  | 294.0 | 84.2  |
-| 4  | **235.0** | **70.8** |
-| 8  | 242.1 | 70.5  |
-| 16 | 235.8 | 79.6  |
-| 32 | 236.6 | 70.4  |
+## Воспроизводимость
 
-![Buffer size](../docs/charts/task3_buffer.png)
+Отклонение перимедиан трёх независимых запусков: **медиана 0.71%,
+p90 2.18%, худший случай 2.96%** (io_scaling light 2r/2w — самое шумное
+семейство, что ожидаемо: лёгкий проход короче всех). Ни один вывод выше не
+опирается на разницу меньше 3%; все качественные переходы (w=1→2, buf=1→2,
+serial→nested) превышают 30%.
 
-`buffer=1` (2 resident images) serializes the stages — every stage waits for the next
-slot and workers go idle: **~2× slowdown** on heavy. The knee is at buffer ≈ 4:
-enough to keep the reader ahead and a couple of images in the write queue. Beyond the
-knee everything is plateau + noise for both kernels; larger buffers buy nothing and
-only enlarge the resident set.
-Design bound: at most `2 × buffer` images resident (~8 MB per resident megapixel) —
-this is what stops a fast reader from flooding memory when compute or write lags.
+## Итоговые рекомендации (эта машина, протокол с равными частотами)
 
-## Summary of recommendations (this machine)
+| рабочая нагрузка | конфигурация | проход, мс | против 1w SERIAL |
+|------------------|--------------|----------:|-----------------:|
+| много одноразмерных картинок, тяжёлое ядро | 12w SERIAL, 1r/1w, buf=4–8 | (граница гранулярности не видна) | ~8–10× ожидание по задаче 2 |
+| несколько крупных картинок, тяжёлое ядро | **12w + ROWS t=12**, buf≥2 | 345.9 ± 3.5 | **7.4×** |
+| лёгкие ядра (I/O-bound) | 12w, 2r/2w, buf≥2 | 226.7 ± 7.9 | 1.47× против w=1 |
+| жёсткий лимит памяти | 1w + ROWS t=12 | 413.8 ± 6.2 | 6.2× |
 
-| workload | configuration | pass, ms | vs serial pass |
-|----------|---------------|----------|----------------|
-| many small images, any kernel | 14w SERIAL, 1r/1w, buf=8 | (granularity fine) | ~7–8× expected |
-| few large images, heavy kernel | **14w + ROWS t=14**, buf=8 | 112.4 | **7.1×** |
-| light kernels (I/O bound) | 14w, **3r/3w**, buf=8 | 61.8 | 1.8× |
-| memory-constrained | 1w + ROWS t=14, buf=8 | 135.1 | 5.9× |
+Полные данные: [`docs/benchmark_task3.csv`](../docs/benchmark_task3.csv)
+(сырые наносекунды, 3 запуска), агрегаты и воспроизводимость — соседние CSV;
+графики пересобираются командой `./gradlew charts`.
 
-Full data: [`docs/benchmark_task3.csv`](../docs/benchmark_task3.csv); charts regenerate
-from the run itself into `docs/charts/`.
-
-- The pipeline adds no measurable overhead: 1w light pass (113.7 ms) ≈ the serial sum
-  of the three stages (~112 ms), and the 1w heavy pass (796 ms) is pure Task 1
-  throughput.
-- Task 2's lesson held and sharpened: the only knob worth sweeping is **OS threads**;
-  coroutine counts stay equal to it everywhere (≤ `w` worker coroutines + ≤ `convThreads`
-  tile loops per image), and dynamic tiles make even deliberate oversubscription harmless.
-- The 3.3× plateau of Scenario 1 is the classic **load-balancing** trap of Task 3.3 —
-  image-granular work units are too coarse for 14 threads when the dataset is 7 large
-  images; the fix is tiling (Scenario 4), not more workers.
+Главный вывод задачи 3: у конвейера два разных «столба», и оба лечатся
+разными средствами — **I/O-bound** лёгкого ядра снимается масштабированием
+I/O-стадий (2r/2w), а **границей гранулярности** тяжёлого ядра на малом
+числе крупных файлов снимается только общей глобальной очередью тайлов
+(вложенный tile-parallel на разделяемом пуле). Простой конвейер при этом не
+платит ничего: w=1 равен сумме стадий с точностью до CI.
