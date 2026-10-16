@@ -1,139 +1,155 @@
-# Task 2: Parallel Convolution — OS-Thread Scaling Analysis
+# Задача 2: параллельная свёртка — масштабирование по числу ОС-потоков
 
-## Setup
+## Условия и протокол
 
-- **Machine**: Intel Core Ultra 5 225H, **14 physical cores, no SMT**
-  (4 Performance + 8 Efficient + 2 Low-Power Efficient), CachyOS
-- **JVM**: Java 27 (OpenJDK), Kotlin coroutines on **dedicated fixed thread-pool
-  dispatchers** (`newFixedThreadPoolContext(n)`) — *n* is the experimental knob:
-  the number of OS threads the convolution may run on
-- **Runs**: 1 warmup + 5 measured runs per configuration, nano-second clock
-- **Benchmark**: `./gradlew benchmark -Ptask=parallel`
-- **Reference**: Task 1 serial implementation (bit-identical results, verified by tests)
+- **Машина**: Intel Core Ultra 5 225H (4P + 8E + 2LP-E, без SMT), CachyOS;
+  JDK 27, Kotlin 2.4.21, корутины 1.11.0.
+- **Замер** (`sudo -E ./bench-all.sh`): 3 независимых запуска процесса
+  бенчмарка; в каждом — 1 разогрев + 9 чередующихся итераций на конфигурацию
+  → **27 сырых замеров в наносекундах** на конфигурацию. Агрегаты: медиана,
+  квартили, bootstrap 95% CI (`./gradlew charts`).
+- **Управление средой**: эксперимент на ядрах **0–11** (4P+8E); LP-ядра 12–13 —
+  housekeeping с всеми прерываниями; **все ядра заперты на 2.5 ГГц**,
+  governor=performance. JVM видит 12 доступных процессоров: это и есть
+  «число доступных ОС-потоков», от которого строится кривая.
+- **Свип потоков**: {1, 2, 4, 7, 8, 12, 14} — 12 = все доступные ядра,
+  14 = контроль оверсубскрипции (точка 28 протоколом отфильтрована как
+  > 2×12).
+- **Данные**: сырые замеры — [`docs/benchmark_task2.csv`](../docs/benchmark_task2.csv),
+  агрегаты — `docs/benchmark_stats_task2.csv`, воспроизводимость —
+  `docs/benchmark_repeatability_task2.csv`.
 
-## Benchmark design
+## Модель параллельной реализации
 
-The experiment isolates the effect of **available OS threads**, nothing else:
+Экспериментальная ось — **только число ОС-потоков** и **форма нарезки**
+(требование задачи 2.1); число корутин нигде не является свободным параметром:
 
-1. **Coroutines ≡ OS threads.** Every strategy launches exactly `threads`
-   coroutines on a pool pinned to `threads` OS threads. The only experimental
-   variables are the thread count and the tile *shape* (Task 2.1); the
-   coroutine count is never a free parameter on the hot path.
-2. **Dynamic tile distribution.** The image is cut into ~4 tiles per worker
-   (row bands / column bands / square grid) handed out through one atomic
-   cursor — no per-tile scheduling objects, and fast cores automatically
-   steal more tiles than slow ones.
-3. **Thread counts chosen around this CPU's topology**: `{1, 2, 4, 7, 8, 12, 14, 28}` —
-   4 = P-core block, 7/8 = spill onto E-cores, 12 = P+E, 14 = all physical
-   cores, 28 = 2× oversubscription control point.
-4. **Noise control** (as in Task 1): 1024² and 1920×1080 images with
-   11×11/15×15 box kernels keep every run ≥ 7 ms even at many threads
-   (≥ 50 ms per run at 1 thread), so OS noise stays small relative to the work.
+1. Каждая стратегия запускает ровно `threads` корутин на фиксированном пуле из
+   `threads` ОС-потоков (`newFixedThreadPoolContext(threads)`).
+2. Изображение нарезается на ~4 тайла на воркера (полосы строк / полосы
+   столбцов / прямоугольная сетка) и раздаётся через один атомарный курсор —
+   никаких объектов планирования на тайл, и быстрые ядра автоматически
+   забирают больше тайлов.
+3. Каждый тайл считается тем же самым горячим циклом `convolveRegion` из
+   задачи 1 → результаты побитово совпадают с последовательным эталоном
+   (тестируется для всех чисел потоков 1…21).
+4. Стратегия «корутина на пиксель» (п. 2.1.1) сохранена в коде и тестах как
+   учебный предел, но из бенчмарка исключена: она измеряет оверхед создания
+   корутин, а не скорость.
 
-## Raw Results — Rainier.bmp 1920×1080, blur 15×15 (2.07 MP × 225 taps)
+## Скорость и ускорение
 
-Average of 5 runs, ms; speedup vs `serial` row in parentheses.
+### Maltese.bmp 2238×2446, blur 15×15 (1.23 млрд тапов; serial = 955.5 ± 0.9 мс)
 
-| threads | serial | rows | columns | autoGrid |
-|---------|--------|------|---------|----------|
-| 1  | 184.71 | 184.89 (1.00×) | 185.69 (0.99×) | 185.42 (1.00×) |
-| 2  | — | 97.14 (1.90×) | 96.66 (1.91×) | 105.34 (1.75×) |
-| 4  | — | 54.96 (3.36×) | 54.10 (3.41×) | 52.42 (3.52×) |
-| 7  | — | 35.06 (5.27×) | 35.21 (5.25×) | 34.23 (5.40×) |
-| 8  | — | 31.31 (5.90×) | 31.25 (5.91×) | 29.93 (6.17×) |
-| 12 | — | 24.06 (7.68×) | 24.38 (7.58×) | 22.83 (8.09×) |
-| 14 | — | 24.99 (7.39×) | 24.40 (7.57×) | **22.21 (8.32×)** |
-| 28 | — | 22.78 (8.11×) | 24.06 (7.68×) | 21.99 (8.40×) |
+| threads | rows, мс | columns, мс | autoGrid, мс | ускорение rows / cols / grid |
+|--------:|---------:|------------:|-------------:|:----------------------------|
+| 1  | 956.6 ±0.9 | 958.1 ±0.5 | 957.6 ±0.7 | 1.00 / 1.00 / 1.00 |
+| 2  | 486.0 ±0.4 | 488.6 ±0.5 | 534.4 ±0.3 | 1.97 / 1.96 / **1.79** |
+| 4  | 251.1 ±0.4 | 253.5 ±0.5 | 245.5 ±0.6 | 3.81 / 3.77 / 3.89 |
+| 7  | 150.5 ±0.2 | 152.4 ±0.4 | 157.9 ±0.5 | 6.35 / 6.27 / 6.05 |
+| 8  | 133.4 ±0.5 | 135.7 ±0.6 | 137.5 ±0.4 | 7.16 / 7.04 / 6.95 |
+| 12 | **94.5 ±0.5** | 97.1 ±0.3 | 101.8 ±0.3 | **10.11** / 9.84 / 9.39 |
+| 14 | 94.9 ±0.9 | 96.8 ±0.9 | 101.6 ±0.3 | 10.07 / 9.87 / 9.40 |
 
-Full data (both images, both kernels): [`docs/benchmark_task2.csv`](../docs/benchmark_task2.csv)
+### Rainier.bmp 1920×1080, blur 15×15 (serial = 360.1 ± 0.7 мс)
 
-## Charts
+| threads | rows | columns | autoGrid | ускорение rows / cols / grid |
+|--------:|-----:|--------:|---------:|:----------------------------|
+| 2  | 186.5 | 184.4 | 201.1 | 1.93 / 1.95 / 1.79 |
+| 4  | 99.6  | 96.5  | 92.9  | 3.61 / 3.73 / 3.88 |
+| 8  | 56.3  | 52.6  | 52.9  | 6.40 / 6.85 / 6.81 |
+| 12 | 41.8  | **38.2** | 39.1 | 8.63 / **9.43** / 9.20 |
+| 14 | 39.2  | 38.4  | 39.2  | 9.18 / 9.37 / 9.20 |
 
-![Time vs OS threads](../docs/charts/task2_time_vs_threads.png)
+Лучший результат на 12 доступных ядрах: **10.2×** (rows, Maltese 11×11 —
+52.6 ± 0.6 мс) — 85% от линейного идеала; полная матрица конфигураций — в CSV.
 
-![Speedup vs OS threads](../docs/charts/task2_speedup_vs_threads.png)
+![Время vs число ОС-потоков](../docs/charts/task2_time_vs_threads.png)
 
-![Efficiency vs OS threads](../docs/charts/task2_efficiency.png)
+![Ускорение vs число ОС-потоков](../docs/charts/task2_speedup_vs_threads.png)
 
-![Strategy comparison at 14 threads](../docs/charts/task2_strategies_at_all_cores.png)
+![Эффективность](../docs/charts/task2_efficiency.png)
 
-## Analysis
+![Сравнение стратегий на всех ядрах](../docs/charts/task2_strategies_at_all_cores.png)
 
-### Scaling shape: linear up to 4, decaying up to ~12, then flat
+## Воспроизводимость
 
-- **t = 1 → 4**: 3.4–3.5× — the OS keeps 4 worker threads on the 4 P-cores;
-  scaling is essentially linear, and every strategy matches serial at t=1
-  within 1%, i.e. the pool + atomic-cursor overhead is unmeasurable.
-- **t = 7 → 8**: 4.8–6.2× (not 7–8×) — threads spill onto E-cores. A
-  Lionmont-class E-core runs the same code ~2.5–3× slower than a P-core
-  (no AVX2/FMA unit at all on the 225H's E-cores).
-- **t = 12 → 14**: ~7.4–8.3× at the cleanest (heaviest) config — the last
-  threads land on LP-E cores and add ≈ 0 throughput.
-- **t = 28**: ≈ t = 14 (within run-to-run noise) — dynamic tile stealing makes
-  oversubscription neither a disaster nor a win; the cores stay fed either way.
+Отклонение медиан трёх независимых запусков от пула (пер-конфигурационно):
+**медиана 0.26%, p90 1.25%, худший случай 1.98%**
+([`docs/charts/task2_repeatability.png`](../docs/charts/task2_repeatability.png)).
+Значит: различия ≥ 2× достоверны; различия 1–8% между стратегиями ниже
+разрешающей способности по отдельности, но согласованы по всем конфигурам
+(см. ниже — они и там невелики).
 
-The plateau at ~8× on a 14-core chip is **hardware truth, not software waste**:
-effective FP throughput ≈ 4·P + 10·(0.3–0.4)·P ≈ 7–8 P-core equivalents.
-The efficiency chart quantifies it: ~88% per thread at t=4, ~77% at t=8,
-~67% at t=12, ~59% at t=14. This is exactly what "speed as a function of
-available OS threads" means on Arrow Lake-H: threads 1–4 are worth about what
-threads 5–14 are worth *combined*.
+## Анализ
 
-### Why tiles are distributed dynamically
+### Форма кривой: 4 ядра почти идеально, дальше — регрессия E-ядер
 
-Static partitioning (exactly `threads` bands, one coroutine each) is a trap on
-a heterogeneous chip: the scheduler places bands on cores of very different
-speed, and the slowest band dictates the makespan — expected time inflates
-toward `threads × slowest-band`, and per-run variance explodes depending on
-which band happened to land on an LP-E core. The dynamic cursor removes that
-failure mode: every worker grabs the *next* band only when free, so P-cores
-finish 3–4× more bands than the slowest cores and the makespan converges to
-`total work / aggregate throughput`. The measured t=28 stability (≈ t=14)
-is direct evidence that the queue, not the thread count, balances the load.
+- **t ≤ 4**: 3.77–3.89× — все потоки на P-ядрах, эффективность 94–97%;
+  оверхед пула невидим (rows@t1 = serial@t1 с точностью 0.1%).
+- **t = 8**: ≈ 7.0–7.2× — OS добавляет 4 E-ядра. Если принять E ≈ 0.75 P при
+  равных частотах, модель даёт 4 + 4·0.75 = **7.0** — измерено 6.95–7.16.
+- **t = 12**: 9.39–10.22× — модель 4 + 8·0.75 = **10** — снова совпадает.
+  Обратная оценка по данным: E-ядро на этой работе даёт **0.68–0.78 P-ядра**
+  при равном такте.
+- **t = 14**: статистически то же, что t = 12 (Δ ≤ 1.5% при CI ~1%) —
+  14 корутин на 12 ядрах не портят makespan: динамическая раздача тайлов
+  делает оверсубскрипцию безвредной (прерванный тайл просто добирается позже).
 
-### Strategy comparison (Task 2.1: data access patterns)
+Итог по протоколу с равными частотами: плато на **~85% линейного** — это
+архитектурная правда про E-ядра, а не лотерея буста и не потери реализации
+(совокупная производительность rows@12: 12.9 Gtap/s, 1.07 Gtap/s/ядро-эквивалент).
 
-At t=14 on the large compute-bound config: **autoGrid 22.21 ms < columns 24.40 ms
-≤ rows 24.99 ms** (rows/columns within noise of each other):
+![Воспроизводимость](../docs/charts/task2_repeatability.png)
 
-- **rows**: perfect streaming of input rows; the wrapped border rows re-read
-  the opposite image edge, costing a bit of locality.
-- **columns**: tiles are 14–17 px-wide full-height strips; reading row-major
-  input through a narrow column window defeats prefetching. The penalty is
-  small here because the 1920×1080 `DoubleArray` input (16.6 MB) lives mostly
-  in the 18 MB shared L3, and dynamic stealing smooths the stride misses.
-- **autoGrid** (≈8×8 blocks at 14 workers): square tiles ~fit L2
-  (input+output per tile), giving the best and most stable makespan on all
-  four image/kernel configs. More tiles per side also mean finer stealing
-  granularity. At t=2 autoGrid is the worst shape (coarse 3×3-ish blocks,
-  load imbalance) — shape matters most at low thread counts.
+### Форма нарезки (п. 2.1) важнее на мезоне, чем на плато
 
-### Cost model check
+- Полосы строк vs полосы столбцов расходятся **не более чем на ±8%** и направление
+  зависит от ориентации кадра: на вертикальной Maltese выигрывают строки
+  (94.5 vs 97.1 мс), на горизонтальной Rainier — столбцы (38.2 vs 41.8).
+  Классическая «катастрофа колоночного доступа» не воспроизводится: даже узкая
+  полоса столбцов читает память последовательными окнами строк, а входной
+  кадр на 2 МП почти целиком живёт в общем L3.
+- **autoGrid платит за квантование**: при t=2 сетка даёт 9 блоков (3×3), два
+  воркера делят их как 5+4 → предсказанный потолок 2/(5/9) = **1.80** —
+  измерено 1.78–1.79 точно по модели. При t=12: 49 блоков на 12 воркеров
+  (4·12=48 ≤ 49 ≤ 5·12) → потери тех же 8%. При t=4 (16 блоков) сетка,
+  наоборот, чуть впереди всех.
+- Вывод: форма тайла — параметр на уровне единиц процентов; главный фактор —
+  число ОС-потоков и их качество (P/E).
 
-Serial throughput (Task 1): ~2.4 Gtap/s/core. Rainier/15×15 = 467 M-taps →
-184.7 ms at t=1 matches exactly. Best parallel: 22.21 ms → aggregate 21.0 Gtap/s
-= 8.3× single core. No configuration lost more than ~1% to pool/dispatch
-overhead at t=1.
+### Динамическая раздача против статической
 
-### Conclusions / recommendations
+Статическая нарезка «по полосе на поток» на гетерогенной машине отдёт
+makespan во власть самого медленного тайла (полоса на E-ядре длится в ~1.3–1.5×
+дольше), а при неудачном размещении разброс прогонов взрывается. Атомарный
+курсор с ~4 тайлами на воркера убирает обе проблемы: быстрые ядра берут
+больше полос, makespan сходится к «работа / суммарная пропускная
+способность», и кривая становится гладкой и воспроизводимой в пределах 2%
+(см. repeatability выше).
 
-1. Use **autoGrid with 12–14 workers** on this chip (t=14 default; 12 is
-   equivalent within noise). More than 14 threads achieves nothing.
-2. Keep coroutines = OS threads = pool size; balance load with *tile
-   granularity*, never with coroutine count.
-3. The remaining ~1.7× gap to "14×" is E-core FP capability — unreachable from
-   software; only explicit heterogeneous scheduling (task 4+, not required)
-   could exploit the extra cores better.
+### Проверка cost-модели
 
-## Baseline for Task 3
+serial-замеры задачи 2 совпадают с задачей 1 в пределах 0.7% (955.5 vs 958.1
+мс для Maltese 15×15 — разные прогоны), rows@t1 — в пределах 0.2% ⇒ диспетчеризация
+пула и атомарный курсор не стоят измеримого времени; вся кривая — это железо.
 
-Task 3 pipes whole images through read → convolve → write stages. This
-benchmark says: a convolution of a 2 MP image with a 15×15 kernel costs
-~22 ms across 14 threads (~11 ms per MP), while I/O for the same image is a
-few ms — so the pipeline stages must overlap rather than gate each other.
-The open question Task 3 must answer empirically: parallelize *across* images
-(W serial workers, no nested coroutines) or *inside* images (tile-parallel
-convolution on the same pool)? Cross-image parallelism is simpler but its
-makespan is bounded by the largest image in flight; Task 2's t=14 result of
-~8.3× suggests per-image nesting also has a role when images are few and
-large. Task 3 benchmarks both.
+## Рекомендации
+
+1. Рабочая точка на этой машине в рамках протокола: **12 потоков, rows или
+   columns** (выбор по ориентации кадра), autoGrid — если нужна «универсальная»
+   форма с потерей ≤8%.
+2. Больше потоков, чем физических ядер в cpuset, добавлять бессмысленно
+   (t=14 ≈ t=12), но и безопасно.
+3. Единственный способ догнать «12×» — гетерогенный планировщик, знающий,
+   что E-ядро ≈ 0.75 P (задача 4+, здесь не реализуется).
+
+## Мостик к задаче 3
+
+Свёртка 2 МП-кадра 15×15 стоит ~39 мс на 12 потоках (~19 мс/МП), I/O того же
+кадра — десятки миллисекунд: стадии нужно перекрывать, а не последовать.
+Открытый вопрос для замера в задаче 3: параллелить **между** картинками
+(W serial-воркеров) или **внутри** каждой (tile-параллельная свёртка на общем
+пуле)? Межкадровый вариант проще, но его makespan упирается в самую большую
+картинку датасета; внутрикадровый даёт ту же глобальную очередь тайлов, что
+объяснила задача 2. Замеряем оба.

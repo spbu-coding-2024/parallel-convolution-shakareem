@@ -63,27 +63,44 @@ different per-thread throughput).
 All parallel strategies are verified to produce results bit-identical to the
 serial implementation for any thread count.
 
-## Benchmarking
+## Benchmarking (v2 protocol)
 
-Benchmarks use 1 warmup + 5 measured runs on large images with 11×11/15×15
-box-blur kernels, so each run carries ≥ 50 ms of useful convolution work and
-OS noise stays below a few percent. Result tables (`docs/benchmark_taskN.csv`)
-drive PNG charts regenerated into `docs/charts/`.
+The measurement protocol isolates the number of OS threads as the only
+experimental variable:
 
-### Serial
+- **Raw nanoseconds, long format**: each invocation writes one CSV row per
+  individual measurement (default warmup + 7/9/5 interleaved reps for
+  Task 1/2/3). No averaging happens inside the benchmark process.
+- **Interleaved matrix**: one seeded shuffle of all configs, then rep 1 over
+  every config, rep 2 over every config… — thermal/background drift cannot
+  alias with a strategy or thread count.
+- **Independent rounds**: `bench-all.sh` runs the suite R times (default 3)
+  into separate `docs/bench/<stamp>/runK/` dirs; the cross-round spread of
+  per-round medians is the measured reproducibility of the experiment.
+- **Hardware controls** (root): all cores pinned to one common frequency
+  (2.5 GHz = slowest core's max: no boost lottery, P/E compared at equal
+  clocks), performance governor, every device IRQ steered to housekeeping
+  cores outside the benchmark cpuset (`--cpus 0-11`).
+- **Offline analysis**: `./gradlew charts -Psrc=docs/bench/<stamp>` pools all
+  rounds and writes median / IQR / bootstrap 95% CI per config to
+  `docs/benchmark_stats_taskN.csv` + `docs/benchmark_repeatability_taskN.csv`,
+  and renders every PNG with error bars / box plots to `docs/charts/`.
+
+### Full controlled run
 
 ```bash
-./gradlew benchmark -Ptask=serial
+sudo -E ./bench-all.sh                    # 3 rounds x {serial, parallel} + charts
+sudo -E ./bench-all.sh --cpus 0-11        # reserve LP-cores for IRQs/housekeeping
+./bench-all.sh --no-pin --no-irq          # rootless mode
 ```
-Results: `docs/benchmark_task1.csv` + `task1_*.png` charts.
 
-### Parallel (OS thread scaling)
+### Individual commands
 
 ```bash
-./gradlew benchmark -Ptask=parallel
+./gradlew benchmark -Ptask=serial    [-Pout=DIR] [-Preps=N]
+./gradlew benchmark -Ptask=parallel  [-Pout=DIR] [-Preps=N]   # sweeps OS threads {1,2,4,7,8,12,14}x(2xcores)
+./gradlew charts -Psrc=docs/bench/<stamp>
 ```
-Sweeps OS threads `{1, 2, 4, 7, 8, 12, 14, 28}` per strategy (28 = oversubscription demo).
-Results: `docs/benchmark_task2.csv` + `task2_*.png` charts.
 
 ## Performance Analysis
 
