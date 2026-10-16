@@ -219,3 +219,6 @@ gradle-app.setting
 task.md
 # Kotlin compiler daemon session state
 .kotlin/
+
+# Raw benchmark run data (regenerated per run; committed selectively)
+docs/bench/

@@ -1,5 +1,5 @@
 plugins {
-    kotlin("jvm") version "2.2.0"
+    kotlin("jvm") version "2.4.21"
     application
     id("org.jlleitschuh.gradle.ktlint") version "12.1.2"
 }
@@ -13,8 +13,14 @@ tasks.withType<JavaCompile> {
     targetCompatibility = "24"
 }
 
+kotlin {
+    compilerOptions {
+        jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_24)
+    }
+}
+
 dependencies {
-    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.9.0")
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.11.0")
     implementation("org.jetbrains.kotlinx:kotlinx-cli:0.3.6")
     implementation("org.knowm.xchart:xchart:3.8.2")
     implementation("com.twelvemonkeys.imageio:imageio-bmp:3.9.4")
@@ -56,7 +62,20 @@ tasks.register<JavaExec>("benchmark") {
     classpath = sourceSets["main"].runtimeClasspath
     mainClass.set("BenchmarkKt")
 
-    // Pass -Ptask=serial (or parallel/pipeline) from Gradle command line
+    // Pass -Ptask=serial (or parallel/pipeline) from Gradle command line.
+    // Optional: -Preps=N (measured rounds per config), -Pout=DIR (raw data dir).
     val benchTask = project.findProperty("task")?.toString() ?: "serial"
     args(benchTask)
+    (project.findProperty("reps")?.toString())?.let { args("--reps", it) }
+    (project.findProperty("out")?.toString())?.let { args("--out", it) }
+}
+
+tasks.register<JavaExec>("charts") {
+    group = "benchmark"
+    description = "Draw charts + stats CSVs from raw benchmark data. Use -Psrc=docs/bench/<run> to select."
+
+    classpath = sourceSets["main"].runtimeClasspath
+    mainClass.set("ChartsKt")
+
+    (project.findProperty("src")?.toString())?.let { args(it) }
 }
