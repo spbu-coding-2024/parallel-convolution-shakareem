@@ -1,118 +1,124 @@
-# Task 1: Serial Convolution — Performance Analysis
+# Задача 1: последовательная свёртка — анализ производительности
 
-## Setup
+## Условия и протокол измерения
 
-- **Machine**: Intel Core Ultra 5 225H, **14 physical cores** (4P + 8E + 2LP-E, no SMT), 30 GB RAM, CachyOS
-- **JVM**: Java 27 (OpenJDK), JVM target 24
-- **Runs**: 1 warmup (JIT + page cache) + 5 measured runs per configuration, averaged
-- **Benchmark**: `./gradlew benchmark -Ptask=serial`
+- **Машина**: Intel Core Ultra 5 225H — 14 физических ядер без SMT
+  (4 P-ядра, 8 E-ядер, 2 LP-E), 30 ГБ RAM, CachyOS.
+- **JVM**: OpenJDK 27, Kotlin 2.4.21, корутины kotlinx 1.11.0.
+- **Замер**: `sudo -E ./bench-all.sh` — три **независимых запуска** процесса
+  бенчмарка; в каждом: 1 разогрев + 7 чередующихся (interleaved) итераций на
+  конфигурацию → по **21 сырому замеру в наносекундах** на конфигурацию.
+- **Управление средой** (протокол `bench-all.sh`):
+  - под эксперимент выделены ядра **0–11** (все P- и E-ядра), ядра 12–13
+    (LP-E) оставлены под housekeeping: туда переведены все прерывания
+    устройств, `irqbalance` остановлен;
+  - **все ядра заперты на одной частоте 2.5 ГГц** (governor =
+    performance): нет буст-лотереи между конфигурациями, и P/E-ядра
+    сравниваются при равных тактах — ускоряение измеряется в чистом IPC и
+    пропускной способности, а не в разнице частот;
+  - порядок конфигураций перемешан одним и тем же seed (20260416) во всех
+    раундах — фоновый дрейф не сливается ни с одной конфигурацией.
+- **Данные**: сырые замеры — [`docs/benchmark_task1.csv`](../docs/benchmark_task1.csv)
+  (длинный формат: строка = один замер, колонка `round` = запуск);
+  агрегаты — [`docs/benchmark_stats_task1.csv`](../docs/benchmark_stats_task1.csv)
+  (медиана, квартили, bootstrap 95% CI); воспроизводимость —
+  [`docs/benchmark_repeatability_task1.csv`](../docs/benchmark_repeatability_task1.csv).
+  Все графики строит `./gradlew charts` из этих же файлов.
+- **Мелкие конфигурации в бенчмарк не входят намеренно**: изображения < 1 МП и
+  ядра 3×3 дают единицы миллисекунд полезной работы, где шум ОС и квантование
+  таймера сравнимы с сигналом. Здесь каждая строка таблицы — это 50–1900 мс
+  чистой арифметики.
 
-## Implementation
+## Реализация
 
-The serial core is deliberately written for maximum single-thread throughput, so that
-every later comparison (Task 2, Task 3) measures *parallelism*, not implementation waste:
+Последовательное ядро написано так, чтобы вся дальнейшая сравнительная
+статистика относилась к параллелизму, а не к потерям реализации:
 
-1. **Kernel reflection hoisted.** A discrete convolution is a correlation with the
-   180°-rotated kernel; the rotation is computed once (`flipped()`) instead of doing two
-   array lookups and two index subtractions *per tap*.
-2. **Wrap-around moved out of the hot loop.** Pixels whose whole kernel window fits in
-   the image use a straight-line inner loop (`convolvePixelFast`: one row reference per
-   kernel row, one load per tap, no modulo). Only the ≤ `2·K` border rows/columns take
-   the `%`-based path. For a 1024×1024 image with a 15×15 kernel this is ~94% of pixels.
-3. **Row-major tiling API.** `convolveRegion()` accepts an arbitrary `[y0,y1) × [x0,x1)`
-   tile; Task 2 splits images into tiles and reuses the exact same hot loop, so parallel
-   versions add only dispatch, not extra per-pixel work.
+1. **Флир ядра поднят из цикла.** Дискретная свёртка = корреляция с ядром,
+   повёрнутым на 180°; поворот считается один раз (`flipped()`), вместо двух
+   обращений к массиву и двух вычитаний на каждый тап.
+2. **Wrap-around вынесен из горячего цикла.** Для пикселей, у которых всё окно
+   ядра помещается в изображение, работает линейный цикл
+   `convolvePixelFast` (один захват строки на строку ядра, одна загрузка на
+   тап, без `%`). Через медленный путь с модулем идут только пограничные
+   строки/столбцы — для 1024² и ядра 15×15 это ~6% пикселей.
+3. **Тайловый API.** `convolveRegion(image, flipped, output, y0, y1, x0, x1)`
+   считает произвольный прямоугольник; параллельные реализации (задачи 2–3)
+   переиспользуют ровно этот же горячий цикл, поэтому параллельная версия
+   добавляет только диспетчеризацию.
 
-Accumulation order per pixel is identical to the naive formulation, so results are
-bit-for-bit equal and the serial implementation stays a valid reference for the
-parallel ones (checked in tests).
+Порядок накопления слагаемых на пиксель идентичен наивной формуле —
+результаты побитово совпадают с эталоном, и последовательная реализация
+остаётся валидным референсом для параллельных (проверяется тестами).
 
-Measured single-core throughput: **~2.4 Gtap/s ≈ 4.9 GFLOPS** (blur 15×15 on man.bmp:
-97.0 ms for 1.05 Mpx × 225 taps). This is the per-thread ceiling that Task 2's
-thread-scaling measurements are compared against.
+## Результаты
 
-## Benchmark design — minimizing OS noise
+Медиана 21 замера ± половина bootstrap 95% CI.
 
-Absolute scheduling/interrupt noise is roughly constant per run (~1–3 ms). To make it
-irrelevant, each measured configuration must do enough useful work:
+| Изображение | Размер | Ядро | Медиана, мс | 95% CI, ±мс | Разброс min–max | нс/(пиксель·тап) |
+|-------------|--------|------|------------:|------------:|----------------:|-----------------:|
+| man | 1024×1024 | blur 11×11 | 99.18 | 0.21 | 98.57–101.84 | 0.782 |
+| man | 1024×1024 | blur 15×15 | 185.16 | 0.42 | 184.18–187.73 | 0.785 |
+| man | 1024×1024 | blur 21×21 | 374.04 | 0.65 | 373.28–379.36 | 0.809 |
+| Rainier | 1920×1080 | blur 11×11 | 193.54 | 0.57 | 192.60–196.82 | 0.771 |
+| Rainier | 1920×1080 | blur 15×15 | 359.64 | 1.13 | 357.89–364.22 | 0.771 |
+| Rainier | 1920×1080 | blur 21×21 | 723.21 | 0.87 | 720.85–729.25 | 0.791 |
+| Maltese | 2238×2446 | blur 11×11 | 538.32 | 2.05 | 534.04–546.76 | 0.813 |
+| Maltese | 2238×2446 | blur 15×15 | 958.09 | 2.37 | 948.65–966.53 | 0.778 |
+| Maltese | 2238×2446 | blur 21×21 | 1869.99 | 2.12 | 1865.62–1878.13 | 0.775 |
 
-* **Images**: a size ladder `cameraman 256²` → `lenna 512²` → `man 1024²` →
-  `Rainier 1920×1080`, up to 2 MP.
-* **Kernels**: `blur 3×3`, `edge 3×3`, `blur 11×11`, `blur 15×15` (225 taps) — the heavy
-  box blurs push large-image runs to 50–190 ms, where noise is ≲1%.
-* **1 warmup + 5 runs** per configuration: warmup absorbs JIT tier-up and page faults;
-  after that the spread is tiny (see the stability chart).
-* Everything is computed in-memory from a pre-loaded `DoubleArray`; no I/O inside a
-  timed region.
+## Воспроизводимость
 
-![Relative run-to-run spread](../docs/charts/task1_run_spread.png)
+Медианы трёх независимых запусков процесса бенчмарка сходятся с пулом
+следующим образом (см. [`docs/charts/task1_repeatability.png`](../docs/charts/task1_repeatability.png),
+коробки = периметные медианы по раундам, % от пула):
 
-The spread chart shows the design working: 3×3 kernels on small images still have
-tens–hundreds of percent relative spread (they are *not* used for scaling conclusions —
-they only take ~1 ms of useful work), while every configuration doing ≥ 50 ms of work
-varies by < 4%, and the two heaviest ones (1024² and 1920×1080 with the 15×15 kernel)
-by ~2% and ~0.5%.
+- медиана отклонения по конфигурациям: **0.15%**;
+- худший случай: **0.67%** (Maltese 11×11).
 
-## Raw Results
+То есть разницей между любыми двумя строками таблицы в ~0.8% и менее
+утверждать что-либо нельзя; все эффекты в таблице (в 1.94–5.4×) на два-три
+порядка выше этого порога. Разброс внутри раунда (max−min)/медиана ≤ 3.3%
+для всех конфигураций.
 
-Timing uses a nanosecond-resolution clock (`System.nanoTime`), so sub-millisecond
-runs are not quantization artifacts.
+## Анализ
 
-| Image | Size | Kernel | Avg (ms) | Min (ms) | Max (ms) |
-|-------|------|--------|----------|----------|----------|
-| cameraman | 256×256 | blur 3×3 | 1.30 | 0.85 | 2.38 |
-| cameraman | 256×256 | edge 3×3 | 1.07 | 0.84 | 1.96 |
-| cameraman | 256×256 | blur 11×11 | 3.83 | 3.71 | 4.05 |
-| cameraman | 256×256 | blur 15×15 | 7.10 | 7.03 | 7.27 |
-| lenna | 512×512 | blur 3×3 | 2.63 | 1.85 | 5.16 |
-| lenna | 512×512 | edge 3×3 | 1.79 | 1.77 | 1.80 |
-| lenna | 512×512 | blur 11×11 | 13.98 | 13.55 | 15.36 |
-| lenna | 512×512 | blur 15×15 | 25.36 | 25.33 | 25.41 |
-| man | 1024×1024 | blur 3×3 | 7.93 | 7.23 | 9.09 |
-| man | 1024×1024 | edge 3×3 | 7.54 | 7.14 | 8.59 |
-| man | 1024×1024 | blur 11×11 | 52.51 | 51.89 | 53.96 |
-| man | 1024×1024 | blur 15×15 | 97.02 | 96.60 | 98.25 |
-| Rainier | 1920×1080 | blur 3×3 | 15.02 | 14.54 | 15.99 |
-| Rainier | 1920×1080 | edge 3×3 | 14.77 | 14.32 | 16.04 |
-| Rainier | 1920×1080 | blur 11×11 | 103.13 | 102.02 | 105.64 |
-| Rainier | 1920×1080 | blur 15×15 | 186.61 | 186.21 | 187.06 |
+### Масштабирование по размеру и ядру
 
-Full data: [`docs/benchmark_task1.csv`](../docs/benchmark_task1.csv)
-(charts are regenerated from this table by the benchmark itself into `docs/charts/`).
+![Время vs размер изображения (log-log)](../docs/charts/task1_scaling.png)
 
-## Analysis
+На log-log осях зависимости — прямые. man → Rainier: ×1.98 пикселей → ×1.93–1.95
+времени; man → Maltese: ×5.22 пикселей → ×5.0–5.4. По числу тапов (121 → 225 →
+441): ×1.86 → ×1.87, ×1.96 → ×2.02. Подтверждается O(W·H·Kw·Kh) с погрешностью
+единиц процентов.
 
-### Scaling with image size
+### Постоянная пропускная способность
 
-![Time vs image size (log-log)](../docs/charts/task1_scaling.png)
+![нс на тап](../docs/charts/task1_ns_per_tap.png)
 
-Straight lines on log-log axes: time grows linearly with pixel count for every kernel
-(e.g. man → Rainier ≈ 2× pixels → 1.9× time on all kernels). Confirms O(W·H·Kw·Kh).
+Стоимость одного (пиксель·тап) лежит в полосе **0.77–0.81 нс** во всех девяти
+конфигурациях (разброс ~5%): горячий цикл упирается в железо, а не в кэш или
+шум. При запиненных 2.5 ГГц это **~1.28 Gtap/s на ядро** (≈ 2.6 GFLOPS,
+0.51 тапа/такт) — потолок, от которого считать эффективность задач 2 и 3:
+на 12 выделенных ядрах линейный идеал = ~15.3 Gtap/s.
 
-### Scaling with kernel size & constant throughput
+### Wrap-around вместо нулевого padding
 
-![ns per pixel per tap](../docs/charts/task1_ns_per_tap.png)
+Границы заворачиваются циклически, потому что:
 
-Time per (pixel × tap) collapses to a stable ~0.4 ns for all kernels from 11×11 up,
-while the 3×3 cases pay 0.8–2.2 ns: one tap costs the same everywhere, only the
-small-kernel runs are dominated by the fixed per-pixel loop overhead.
-This is the evidence that the hot loop is running at constant hardware throughput
-(~2.4 Gtap/s single-core), i.e. measurements above are throughput, not noise.
+1. это математически корректно для композиционности фильтров
+   (сдвиг влево ∘ сдвиг вправо = тождество — тесты на этом держатся);
+2. нет артефактов обнуления на границе;
+3. поведение не зависит от размера ядра.
 
-### Wrap-around vs zero-padding
+Минус: discontinuity на краях для натуральных изображений (заметно на больших
+ядрах). Пограничные пиксели считаются медленным путём с `%`; их доля мала и
+уже учтена таблицей выше.
 
-Wrap-around (cyclic) boundary was chosen because:
+### Базис для задачи 2
 
-1. Mathematically correct for filter composition tests (shift-left ∘ shift-right = identity)
-2. No border artifacts from zero-padding
-3. Consistent behavior regardless of kernel size
-
-Downside: introduces a discontinuity at image edges for natural images (visible with large kernels).
-
-### Baseline for Task 2
-
-The serial implementation serves as the **reference** for all parallel strategies:
-any parallel result must match it bit-for-bit (tested). Its ~2.4 Gtap/s per core sets the
-expected ceiling for Task 2 on the 14-core Ultra 5 225H; the Task 2 benchmark therefore
-sweeps the number of OS threads the convolution may use (1…14) and measures how close
-chunked parallelism gets to `threads × serial`.
+Последовательная реализация — референс: любая параллельная версия обязана
+давать побитово тот же результат (тестируется). Её пропускная способность
+(1.28 Gtap/s/ядро при равных частотах) задаёт ожидаемый потолок: задача 2
+замеряет, насколько близко chunked-параллелизм подходит к `потоки × базис`
+на 12 выделенных ядрах, с CI на каждой точке.

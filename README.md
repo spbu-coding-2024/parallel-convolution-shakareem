@@ -43,13 +43,25 @@ A command-line tool for applying 2D convolution filters to grayscale images.
 
 ## Benchmarking
 
+The measurement protocol (full description in
+[analysis/task1.md](analysis/task1.md)): only large images (1.0–5.5 MP) and
+heavy box kernels (11×11/15×15/21×21), raw nanosecond samples, one warmup plus
+7 interleaved reps per config, three independent invocations pooled offline.
+
+The controlled-environment runner (`bench-all.sh`: CPU isolation, pinned
+frequency, IRQ steering, N independent rounds) lives on the `pipeline` branch,
+which continues this one.
+
 ```bash
-./gradlew benchmark -Ptask=serial
+./gradlew benchmark -Ptask=serial                     # -> default out dir
+./gradlew benchmark -Ptask=serial -Pout=docs/bench/e1/run1 -Preps=7
+./gradlew charts -Psrc=docs/bench/e1                  # stats CSVs + PNGs from pooled runs
 ```
 
-Results are saved to `docs/benchmark_task1.csv`; charts are regenerated from the
-results table into `docs/charts/` (`task1_scaling.png`, `task1_ns_per_tap.png`,
-`task1_run_spread.png`).
+Outputs: raw data `docs/benchmark_task1.csv` (long format, one row per
+measurement), aggregates `docs/benchmark_stats_task1.csv` (median, IQR,
+bootstrap 95% CI), reproducibility `docs/benchmark_repeatability_task1.csv`,
+charts `docs/charts/task1_*.png` (CI error bars + box plots).
 
 ## Performance Analysis
 
