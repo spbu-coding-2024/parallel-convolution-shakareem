@@ -1,34 +1,34 @@
 scenario,label,kernel,mode,readers,workers,writers,buffer,conv_threads,avg_ms,min_ms,max_ms,run1_ms,run2_ms,run3_ms
-stages,read+decode dataset,io,n/a,1,1,0,1,1,58.33,55.65,60.04,60.04,59.28,55.65
-stages,encode+write dataset,io,n/a,0,1,1,1,1,28.41,27.56,29.53,29.53,27.56,28.13
-worker_scaling_heavy,workers=1 (1r/1w buf=8),heavy_15x15,SERIAL,1,1,1,8,14,807.13,797.45,813.74,813.74,810.21,797.45
-worker_scaling_heavy,workers=2 (1r/1w buf=8),heavy_15x15,SERIAL,1,2,1,8,14,441.51,437.55,444.03,444.03,437.55,442.95
-worker_scaling_heavy,workers=4 (1r/1w buf=8),heavy_15x15,SERIAL,1,4,1,8,14,267.65,264.46,272.90,265.61,272.90,264.46
-worker_scaling_heavy,workers=8 (1r/1w buf=8),heavy_15x15,SERIAL,1,8,1,8,14,235.33,231.62,237.81,237.81,231.62,236.55
-worker_scaling_heavy,workers=12 (1r/1w buf=8),heavy_15x15,SERIAL,1,12,1,8,14,237.64,233.87,239.95,239.08,233.87,239.95
-worker_scaling_heavy,workers=14 (1r/1w buf=8),heavy_15x15,SERIAL,1,14,1,8,14,240.70,239.28,242.91,239.28,242.91,239.91
-worker_scaling_light,workers=1 (1r/1w buf=8),light_3x3,SERIAL,1,1,1,8,14,113.17,112.19,114.61,112.19,112.70,114.61
-worker_scaling_light,workers=2 (1r/1w buf=8),light_3x3,SERIAL,1,2,1,8,14,90.72,82.39,95.89,93.89,82.39,95.89
-worker_scaling_light,workers=4 (1r/1w buf=8),light_3x3,SERIAL,1,4,1,8,14,81.33,74.33,88.38,88.38,81.29,74.33
-worker_scaling_light,workers=8 (1r/1w buf=8),light_3x3,SERIAL,1,8,1,8,14,74.43,73.66,75.08,74.53,75.08,73.66
-worker_scaling_light,workers=12 (1r/1w buf=8),light_3x3,SERIAL,1,12,1,8,14,76.76,71.07,82.08,71.07,82.08,77.13
-worker_scaling_light,workers=14 (1r/1w buf=8),light_3x3,SERIAL,1,14,1,8,14,72.31,72.00,72.87,72.87,72.06,72.00
-io_scaling,light 14w 2r/2w,light_3x3,SERIAL,2,14,2,8,14,63.34,56.54,68.15,68.15,65.32,56.54
-io_scaling,light 14w 3r/3w,light_3x3,SERIAL,3,14,3,8,14,65.83,54.32,86.11,57.06,54.32,86.11
-io_scaling,heavy 14w 2r/2w,heavy_15x15,SERIAL,2,14,2,8,14,235.61,231.82,238.05,236.95,231.82,238.05
-nested,1w ROWS t=14 (nested),heavy_15x15,ROWS,1,1,1,8,14,152.07,147.73,155.59,155.59,147.73,152.90
-nested,4w ROWS t=4 (nested),heavy_15x15,ROWS,1,4,1,8,4,244.41,242.59,246.89,243.74,242.59,246.89
-nested,14w ROWS t=14 (oversub),heavy_15x15,ROWS,1,14,1,8,14,114.71,111.90,120.26,120.26,111.90,111.97
-nested,14w SERIAL (reference),heavy_15x15,SERIAL,1,14,1,8,14,234.95,233.87,236.25,234.74,233.87,236.25
-buffer,heavy 14w buf=1,heavy_15x15,SERIAL,1,14,1,1,14,488.49,487.30,490.28,487.88,490.28,487.30
-buffer,light 14w buf=1,light_3x3,SERIAL,1,14,1,1,14,126.15,104.41,151.34,122.70,151.34,104.41
-buffer,heavy 14w buf=2,heavy_15x15,SERIAL,1,14,1,2,14,291.57,279.78,298.66,279.78,296.27,298.66
-buffer,light 14w buf=2,light_3x3,SERIAL,1,14,1,2,14,97.40,94.40,101.58,96.23,101.58,94.40
-buffer,heavy 14w buf=4,heavy_15x15,SERIAL,1,14,1,4,14,239.77,238.06,241.61,238.06,241.61,239.63
-buffer,light 14w buf=4,light_3x3,SERIAL,1,14,1,4,14,76.83,71.61,85.83,73.04,85.83,71.61
-buffer,heavy 14w buf=8,heavy_15x15,SERIAL,1,14,1,8,14,238.08,235.54,240.19,235.54,240.19,238.49
-buffer,light 14w buf=8,light_3x3,SERIAL,1,14,1,8,14,73.63,72.19,75.01,75.01,72.19,73.68
-buffer,heavy 14w buf=16,heavy_15x15,SERIAL,1,14,1,16,14,234.65,231.98,236.08,231.98,235.88,236.08
-buffer,light 14w buf=16,light_3x3,SERIAL,1,14,1,16,14,78.74,72.12,82.05,82.05,72.12,82.04
-buffer,heavy 14w buf=32,heavy_15x15,SERIAL,1,14,1,32,14,234.72,232.27,236.60,235.30,232.27,236.60
-buffer,light 14w buf=32,light_3x3,SERIAL,1,14,1,32,14,86.05,71.77,108.77,108.77,77.61,71.77
+stages,read+decode dataset,io,n/a,1,1,0,1,1,56.31,55.40,57.69,55.85,57.69,55.40
+stages,encode+write dataset,io,n/a,0,1,1,1,1,24.37,23.82,25.41,25.41,23.88,23.82
+worker_scaling_heavy,workers=1 (1r/1w buf=8),heavy_15x15,SERIAL,1,1,1,8,14,796.08,792.92,801.74,792.92,801.74,793.58
+worker_scaling_heavy,workers=2 (1r/1w buf=8),heavy_15x15,SERIAL,1,2,1,8,14,425.43,419.21,431.40,431.40,425.67,419.21
+worker_scaling_heavy,workers=4 (1r/1w buf=8),heavy_15x15,SERIAL,1,4,1,8,14,260.87,252.92,265.57,252.92,265.57,264.13
+worker_scaling_heavy,workers=8 (1r/1w buf=8),heavy_15x15,SERIAL,1,8,1,8,14,246.38,237.85,261.53,237.85,261.53,239.75
+worker_scaling_heavy,workers=12 (1r/1w buf=8),heavy_15x15,SERIAL,1,12,1,8,14,240.21,236.36,244.26,244.26,236.36,240.03
+worker_scaling_heavy,workers=14 (1r/1w buf=8),heavy_15x15,SERIAL,1,14,1,8,14,238.94,234.59,243.70,234.59,243.70,238.54
+worker_scaling_light,workers=1 (1r/1w buf=8),light_3x3,SERIAL,1,1,1,8,14,113.66,105.36,119.21,119.21,116.41,105.36
+worker_scaling_light,workers=2 (1r/1w buf=8),light_3x3,SERIAL,1,2,1,8,14,81.17,77.44,87.52,77.44,78.56,87.52
+worker_scaling_light,workers=4 (1r/1w buf=8),light_3x3,SERIAL,1,4,1,8,14,78.92,69.05,86.95,80.75,69.05,86.95
+worker_scaling_light,workers=8 (1r/1w buf=8),light_3x3,SERIAL,1,8,1,8,14,75.11,69.54,86.02,69.54,69.78,86.02
+worker_scaling_light,workers=12 (1r/1w buf=8),light_3x3,SERIAL,1,12,1,8,14,71.88,69.43,76.48,69.73,69.43,76.48
+worker_scaling_light,workers=14 (1r/1w buf=8),light_3x3,SERIAL,1,14,1,8,14,82.62,71.45,89.28,89.28,71.45,87.13
+io_scaling,light 14w 2r/2w,light_3x3,SERIAL,2,14,2,8,14,70.07,53.33,82.14,53.33,74.75,82.14
+io_scaling,light 14w 3r/3w,light_3x3,SERIAL,3,14,3,8,14,61.78,51.81,68.32,68.32,65.22,51.81
+io_scaling,heavy 14w 2r/2w,heavy_15x15,SERIAL,2,14,2,8,14,239.16,235.97,244.82,244.82,235.97,236.69
+nested,1w ROWS t=14 (nested),heavy_15x15,ROWS,1,1,1,8,14,135.10,131.14,141.02,141.02,133.14,131.14
+nested,4w ROWS t=4 (nested),heavy_15x15,ROWS,1,4,1,8,4,249.30,241.53,264.17,264.17,241.53,242.21
+nested,14w ROWS t=14 (oversub),heavy_15x15,ROWS,1,14,1,8,14,112.42,112.11,112.69,112.47,112.11,112.69
+nested,14w SERIAL (reference),heavy_15x15,SERIAL,1,14,1,8,14,236.78,233.65,242.87,242.87,233.65,233.82
+buffer,heavy 14w buf=1,heavy_15x15,SERIAL,1,14,1,1,14,497.09,488.64,512.45,490.19,512.45,488.64
+buffer,light 14w buf=1,light_3x3,SERIAL,1,14,1,1,14,126.88,116.96,135.44,116.96,128.24,135.44
+buffer,heavy 14w buf=2,heavy_15x15,SERIAL,1,14,1,2,14,294.03,267.74,312.81,267.74,312.81,301.54
+buffer,light 14w buf=2,light_3x3,SERIAL,1,14,1,2,14,84.19,76.27,88.30,88.00,76.27,88.30
+buffer,heavy 14w buf=4,heavy_15x15,SERIAL,1,14,1,4,14,234.99,233.22,237.94,233.22,233.82,237.94
+buffer,light 14w buf=4,light_3x3,SERIAL,1,14,1,4,14,70.77,68.89,74.28,68.89,69.14,74.28
+buffer,heavy 14w buf=8,heavy_15x15,SERIAL,1,14,1,8,14,242.10,234.04,248.64,234.04,248.64,243.62
+buffer,light 14w buf=8,light_3x3,SERIAL,1,14,1,8,14,70.47,69.28,72.68,69.28,69.46,72.68
+buffer,heavy 14w buf=16,heavy_15x15,SERIAL,1,14,1,16,14,235.80,233.47,240.42,233.47,233.49,240.42
+buffer,light 14w buf=16,light_3x3,SERIAL,1,14,1,16,14,79.64,72.00,83.72,83.72,83.20,72.00
+buffer,heavy 14w buf=32,heavy_15x15,SERIAL,1,14,1,32,14,236.61,234.11,239.94,234.11,235.77,239.94
+buffer,light 14w buf=32,light_3x3,SERIAL,1,14,1,32,14,70.44,68.98,72.47,69.87,68.98,72.47

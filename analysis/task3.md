@@ -39,69 +39,72 @@ Measured warm, single-threaded, outside the pipeline:
 
 | Stage | Time per pass |
 |-------|---------------|
-| read + decode (grayscale) | 58.3 ms |
-| encode + write | 28.4 ms |
+| read + decode (grayscale) | 56.3 ms |
+| encode + write | 24.4 ms |
 | heavy conv (15×15, 8.4 MP, 1 thread) | ~790 ms |
 | light conv (3×3, 8.4 MP, 1 thread) | ~31 ms |
 
-So: with the heavy kernel I/O is ~11% of one serial pass — trivially hideable.
-With the light kernel I/O **is** the pipeline (~87 ms vs 31 ms of convolution) — the
+So: with the heavy kernel I/O is ~10% of one serial pass — trivially hideable.
+With the light kernel I/O **is** the pipeline (~81 ms vs 31 ms of convolution) — the
 compute stage is irrelevant and only I/O parallelism helps.
 
 ## Scenario 1: heavy kernel — workers sweep (SERIAL per worker)
 
 | workers | pass, ms | speedup | MP/s |
 |---------|----------|---------|------|
-| 1  | 807.1 | 1.00× | 10.4 |
-| 2  | 441.5 | 1.83× | 18.9 |
-| 4  | 267.7 | 3.02× | 31.3 |
-| 8  | 235.3 | **3.43×** | 35.5 |
-| 12 | 237.6 | 3.40× | 35.2 |
-| 14 | 240.7 | 3.35× | 34.8 |
+| 1  | 796.1 | 1.00× | 10.5 |
+| 2  | 425.4 | 1.87× | 19.7 |
+| 4  | 260.9 | 3.05× | 32.1 |
+| 8  | 246.4 | 3.23× | 34.0 |
+| 12 | 240.2 | 3.31× | 34.8 |
+| 14 | 238.9 | **3.33×** | 35.1 |
 
 ![Pass time vs workers](../docs/charts/task3_scaling_vs_workers.png)
 
-Scaling stops at **3.4×, far below Task 2's 8.5×** — and this is not scheduling noise,
+Scaling stops at **3.3×, far below Task 2's 8.3×** — and this is not scheduling noise,
 it is **work granularity**: the dataset has only **7 images**, so at most 7 workers can
 ever be busy, and the pass makespan can never be shorter than the slowest single image
-(Rainier: ~190 ms serial) plus its I/O. The flat/declining tail from w=8 and the tiny
-dip at w=14 are all consistent with this bound: `makespan ≥ max(image time)`.
+(Rainier: ~185 ms serial) plus its I/O. The flat tail from w=8 on is all consistent with
+this bound: `makespan ≥ max(image time)`.
 
-The w=1 number (807 ms) matches Task 1 throughput exactly (8.4 MP × 225 taps /
+The w=1 number (796 ms) matches Task 1 throughput exactly (8.4 MP × 225 taps /
 2.35 Gtap/s ≈ 800 ms), confirming the pipeline itself adds no measurable overhead.
 
 ## Scenario 2: light kernel — the I/O wall
 
 | workers | pass, ms | speedup |
 |---------|----------|---------|
-| 1  | 113.2 | 1.00× |
-| 2  | 90.7  | 1.25× |
-| 4  | 81.3  | 1.39× |
-| 8  | 74.4  | 1.52× |
-| 12 | 76.8  | 1.47× |
-| 14 | 72.3  | 1.57× |
+| 1  | 113.7 | 1.00× |
+| 2  | 81.2  | 1.40× |
+| 4  | 78.9  | 1.44× |
+| 8  | 75.1  | 1.51× |
+| 12 | 71.9  | **1.58×** |
+| 14 | 82.6  | 1.38× |
 
-Adding CPU to the compute stage does nothing once pass time (~72–113 ms) approaches the
-serial I/O sum (~87 ms): the pipeline becomes I/O-bound, exactly the failure mode Task 3
-warns about.
+Adding CPU to the compute stage does nothing once pass time (~72–83 ms) approaches the
+serial I/O sum (~81 ms): the pipeline becomes I/O-bound, exactly the failure mode Task 3
+warns about (the w=14 number is within the run-to-run noise of the plateau — more workers
+than there are images buys nothing when images aren't the constraint).
 
 ## Scenario 3: escaping the I/O bound — scale the I/O stages
 
 | configuration | pass, ms | speedup |
 |---------------|----------|---------|
-| light, 14w, **2r/2w** | **63.3** | **1.79×** |
-| light, 14w, 3r/3w     | 65.8 | 1.72× |
-| heavy, 14w, 2r/2w     | 235.6 | 3.43× (no change) |
+| light, 14w, 2r/2w | 70.1 | 1.62× |
+| light, 14w, **3r/3w** | **61.8** | **1.84×** |
+| heavy, 14w, 2r/2w | 239.2 | 3.33× (no change) |
 
 ![I/O stages](../docs/charts/task3_io_stages.png)
 
-Two parallel reader/writer pairs cut the critical I/O path and recover ~12% on the
-light kernel; three pairs give nothing more (7 files / 3 readers → tail imbalance +
-more contention).
-On the heavy kernel, extra readers change nothing — with buffer prefetch the single reader
-already hides 58 ms of I/O behind 800 ms of compute (Task 3.1: one reader feeds many
-convolutions). This is the load-balancing answer of Task 3.3: **scale the stage that is
-the bottleneck, leave the others at 1**.
+Splitting the I/O stages across parallel readers/writers recovers what CPU workers
+couldn't: 3 pairs bring the light pass to 61.8 ms (1.84×), pushing it below the
+single-reader stage sum — the decode work of 7 files is now genuinely concurrent
+(Task 3.3: the fast stage feeds the bottleneck one). With 2 pairs the effect is
+smaller (70.1 ms): 7 files split 2 ways leaves a lumpy tail.
+On the heavy kernel, extra readers change nothing (239.2 ≈ 238.9) — with buffer
+prefetch the single reader already hides its 56 ms behind 800 ms of compute
+(Task 3.1: one reader feeds many convolutions). This is the load-balancing answer
+of Task 3.3: **scale the stage that is the bottleneck, leave the others at 1**.
 
 ## Scenario 4: nested per-image parallelism (Task 3.2) vs cross-image only
 
@@ -109,10 +112,10 @@ Heavy kernel, same dataset:
 
 | configuration | pass, ms | speedup |
 |---------------|----------|---------|
-| 1w, ROWS convolution t=14 (one image at a time) | 152.1 | 5.31× |
-| 4w, ROWS convolution t=4 (oversubscribed)        | 244.4 | 3.30× |
-| **14w, ROWS convolution t=14 (shared tile pool)** | **114.7** | **7.04×** |
-| 14w, SERIAL (reference, Scenario 1)              | 235.0 | 3.44× |
+| 1w, ROWS convolution t=14 (one image at a time) | 135.1 | 5.89× |
+| 4w, ROWS convolution t=4 (private pools)         | 249.3 | 3.19× |
+| **14w, ROWS convolution t=14 (shared tile pool)** | **112.4** | **7.08×** |
+| 14w, SERIAL (reference, Scenario 1)              | 236.8 | 3.36× |
 
 ![Nested vs cross](../docs/charts/task3_nested_vs_cross.png)
 
@@ -121,36 +124,37 @@ parallelism together**. All nested tile tasks share one cached 14-thread convolu
 pool, and tiles are distributed dynamically (Task 2), so the pool becomes a *global*
 work queue across images: while 6 of the 7 images drain their small tiles, the
 remaining threads keep chipping away at Rainier's big tiles. The `max(image)`
-granularity bound from Scenario 1 disappears — 114.7 ms is close to the true
-compute bound (8.4 MP of tiles / ~21 Gtap/s effective ≈ 90 ms) plus overlapped I/O.
+granularity bound from Scenario 1 disappears — 112.4 ms is close to the true
+compute bound (8.4 MP of tiles / ~21 Gtap/s effective ≈ 90 ms) plus a small tail.
 
 Note the ordering: naive oversubscription is **not** what makes this fast —
-`4w × t=4` (16 threads for 14 cores, four private half-size pools) is the *worst*
-configuration. What matters is one shared pool + dynamic tiles, so total busy
-OS threads stay at 14 and every thread always has work.
+`4w × t=4` (16 threads for 14 cores, four private half-size pools) is *worse than
+the serial-worker baseline* (249.3 vs 236.8 ms). What matters is one shared pool +
+dynamic tiles, so total busy OS threads stay at 14 and every thread always has work.
 
 The `1w ROWS t=14` row is the right choice when images must be processed strictly
-one at a time (e.g. memory-limited): 5.31× with at most one image resident.
+one at a time (e.g. memory-limited): 5.89× with at most one image in the compute
+stage.
 
 ## Scenario 5: buffer sizing (backpressure)
 
 | buffer | heavy 14w, ms | light 14w, ms |
 |--------|---------------|---------------|
-| 1  | 488.5 | 126.1 |
-| 2  | 291.6 | 97.4  |
-| 4  | 239.8 | 76.8  |
-| 8  | 238.1 | **73.6** |
-| 16 | **234.6** | 78.7 |
-| 32 | 234.7 | 86.0 |
+| 1  | 497.1 | 126.9 |
+| 2  | 294.0 | 84.2  |
+| 4  | **235.0** | **70.8** |
+| 8  | 242.1 | 70.5  |
+| 16 | 235.8 | 79.6  |
+| 32 | 236.6 | 70.4  |
 
 ![Buffer size](../docs/charts/task3_buffer.png)
 
 `buffer=1` (2 resident images) serializes the stages — every stage waits for the next
-slot and workers go idle: **2× slowdown** on heavy. The knee is at buffer ≈ 4–8:
-enough to keep the reader ahead and a couple of images in the write queue. Beyond
-that the light case gets *worse* (73.6 → 78.7 → 86.0 ms, with growing variance):
-more resident images evict the page cache and stretch memory.
-Design bound: at most `2 × buffer` images resident (~9.5 MB per MP in + out) —
+slot and workers go idle: **~2× slowdown** on heavy. The knee is at buffer ≈ 4:
+enough to keep the reader ahead and a couple of images in the write queue. Beyond the
+knee everything is plateau + noise for both kernels; larger buffers buy nothing and
+only enlarge the resident set.
+Design bound: at most `2 × buffer` images resident (~8 MB per resident megapixel) —
 this is what stops a fast reader from flooding memory when compute or write lags.
 
 ## Summary of recommendations (this machine)
@@ -158,18 +162,19 @@ this is what stops a fast reader from flooding memory when compute or write lags
 | workload | configuration | pass, ms | vs serial pass |
 |----------|---------------|----------|----------------|
 | many small images, any kernel | 14w SERIAL, 1r/1w, buf=8 | (granularity fine) | ~7–8× expected |
-| few large images, heavy kernel | **14w + ROWS t=14**, buf=16 | 114.7 | **7.0×** |
-| light kernels (I/O bound) | 14w, **2r/2w**, buf=8 | 63.3 | 1.8× |
-| memory-constrained | 1w + ROWS t=14, buf=8 | 152.1 | 5.3× |
+| few large images, heavy kernel | **14w + ROWS t=14**, buf=8 | 112.4 | **7.1×** |
+| light kernels (I/O bound) | 14w, **3r/3w**, buf=8 | 61.8 | 1.8× |
+| memory-constrained | 1w + ROWS t=14, buf=8 | 135.1 | 5.9× |
 
 Full data: [`docs/benchmark_task3.csv`](../docs/benchmark_task3.csv); charts regenerate
 from the run itself into `docs/charts/`.
 
-- The pipeline never loses to its serial sum: even 1w/1r/1w overlapped I/O and compute
-  (113.2 ms < 117 ms stage sum on light, 807 ms heavy ≈ pure compute).
+- The pipeline adds no measurable overhead: 1w light pass (113.7 ms) ≈ the serial sum
+  of the three stages (~112 ms), and the 1w heavy pass (796 ms) is pure Task 1
+  throughput.
 - Task 2's lesson held and sharpened: the only knob worth sweeping is **OS threads**;
   coroutine counts stay equal to it everywhere (≤ `w` worker coroutines + ≤ `convThreads`
   tile loops per image), and dynamic tiles make even deliberate oversubscription harmless.
-- The 3.4× plateau of Scenario 1 is the classic **load-balancing** trap of Task 3.3 —
+- The 3.3× plateau of Scenario 1 is the classic **load-balancing** trap of Task 3.3 —
   image-granular work units are too coarse for 14 threads when the dataset is 7 large
   images; the fix is tiling (Scenario 4), not more workers.
